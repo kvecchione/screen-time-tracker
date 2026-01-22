@@ -115,6 +115,11 @@ class Migration(migrations.Migration):
             name="screentimegoal",
             options={"ordering": ["order", "name"]},
         ),
+        # Temporarily drop unique_together on DailyTracking (goal, date) to allow merging
+        migrations.AlterUniqueTogether(
+            name="dailytracking",
+            unique_together=set(),
+        ),
         # Add the ManyToMany field first (but don't remove old field yet)
         migrations.AddField(
             model_name="screentimegoal",
