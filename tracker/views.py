@@ -31,7 +31,15 @@ class ChildViewSet(viewsets.ModelViewSet):
     def daily_summary(self, request, pk=None):
         """Get today's tracking summary for a child."""
         child = self.get_object()
-        today = timezone.now().date()
+        # Allow client to request summary for a specific date via `date` query param
+        date_param = request.query_params.get('date')
+        if date_param:
+            try:
+                today = datetime.strptime(date_param, '%Y-%m-%d').date()
+            except Exception:
+                today = timezone.now().date()
+        else:
+            today = timezone.now().date()
         
         trackings = DailyTracking.objects.filter(goal__child=child, date=today)
         
@@ -63,8 +71,17 @@ class ChildViewSet(viewsets.ModelViewSet):
     def weekly_summary(self, request, pk=None):
         """Get current week's tracking summary for a child."""
         child = self.get_object()
-        today = timezone.now().date()
-        monday = today - timedelta(days=today.weekday())
+        # Allow client to request the week containing a specific date via `date` query param
+        date_param = request.query_params.get('date')
+        if date_param:
+            try:
+                ref_date = datetime.strptime(date_param, '%Y-%m-%d').date()
+            except Exception:
+                ref_date = timezone.now().date()
+        else:
+            ref_date = timezone.now().date()
+
+        monday = ref_date - timedelta(days=ref_date.weekday())
         sunday = monday + timedelta(days=6)
         
         # Get all trackings for the week

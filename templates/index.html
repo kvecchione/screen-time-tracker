@@ -523,8 +523,8 @@
 
             // Fetch day and week summaries from backend to centralize calculations
             const [dailyResp, weeklyResp, adhocRewards] = await Promise.all([
-                fetch(`${API_URL}/children/${selectedChild.id}/daily_summary/`),
-                fetch(`${API_URL}/children/${selectedChild.id}/weekly_summary/`),
+                fetch(`${API_URL}/children/${selectedChild.id}/daily_summary/?date=${formatDate(currentDate)}`),
+                fetch(`${API_URL}/children/${selectedChild.id}/weekly_summary/?date=${formatDate(currentDate)}`),
                 getAdhocRewards()
             ]);
 
