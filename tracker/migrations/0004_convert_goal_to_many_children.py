@@ -3,6 +3,21 @@
 from django.db import migrations, models
 
 
+def drop_child_fk_index(apps, schema_editor):
+    """
+    MySQL auto-generates an index for the old child FK. When Django later tries
+    to recreate a missing FK index during AlterUniqueTogether, MySQL can raise
+    a duplicate index error. Pre-drop the old index if it exists (MySQL only).
+    """
+    if schema_editor.connection.vendor != 'mysql':
+        return
+    try:
+        schema_editor.execute("ALTER TABLE tracker_screentimegoal DROP INDEX tracker_screentimegoal_child_id_ea368193;")
+    except Exception:
+        # If the index name differs or is already gone, ignore; migration continues.
+        pass
+
+
 def migrate_child_to_children(apps, schema_editor):
     """
     Migrate existing child ForeignKey to children ManyToMany.
@@ -101,6 +116,7 @@ class Migration(migrations.Migration):
             name="screentimegoal",
             unique_together=set(),
         ),
+        migrations.RunPython(drop_child_fk_index),
         # Add the ManyToMany field first (but don't remove old field yet)
         migrations.AddField(
             model_name="screentimegoal",
