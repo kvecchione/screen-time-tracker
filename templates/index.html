@@ -550,6 +550,14 @@
                 });
             const totalAdhocRewards = weeklyAdhocRewards.reduce((sum, r) => sum + r.minutes, 0);
 
+            // Only show the ad-hoc bonus entries for the currently selected day
+            const dailyAdhocRewards = adhocRewards
+                .filter(reward => {
+                    const rewardDate = new Date(reward.awarded_date);
+                    const currentDateOnly = new Date(currentDate);
+                    return rewardDate.toDateString() === currentDateOnly.toDateString();
+                });
+
             // Calculate today's potential reward (still client-side since it's goal metadata)
             const dayCode = getDayCode(currentDate);
             const dayReward = goals
@@ -675,12 +683,12 @@
             `;
 
             // Display ad-hoc rewards if any exist
-            if (weeklyAdhocRewards.length > 0) {
+            if (dailyAdhocRewards.length > 0) {
                 html += `
                     <h2 style="margin-bottom: 15px; margin-top: 20px;">⭐ Bonuses</h2>
                     <div class="goals-list">
                 `;
-                weeklyAdhocRewards.forEach(reward => {
+                dailyAdhocRewards.forEach(reward => {
                     html += `
                         <div class="goal-card">
                             <div class="goal-header">
