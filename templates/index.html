@@ -331,14 +331,15 @@
         <div id="mainContent"></div>
 
         <div style="text-align: center; margin-top: 30px;">
-            <a href="http://localhost:8000/admin/" target="_blank" style="display: inline-block; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; transition: all 0.3s ease;" onmouseover="this.style.background='#764ba2'" onmouseout="this.style.background='#667eea'">
+                <a href="/admin/" target="_blank" style="display: inline-block; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; transition: all 0.3s ease;" onmouseover="this.style.background='#764ba2'" onmouseout="this.style.background='#667eea'">
                 ⚙️ Go to Admin
             </a>
         </div>
     </div>
 
     <script>
-        const API_URL = 'http://localhost:8000/api';
+        // Resolve API URL relative to the current host so app works on any domain
+        const API_URL = new URL('/api', window.location.origin).href;
         
         // Helper function to get CSRF token
         function getCsrfToken() {

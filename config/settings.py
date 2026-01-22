@@ -140,12 +140,8 @@ else:
         'PAGE_SIZE': 100,
     }
 
-# CORS settings for mobile app
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'http://localhost:8000',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:8000',
-]
+# CORS: allow all origins (disabled protections)
+CORS_ALLOW_ALL_ORIGINS = True
 
+# Allow credentials across origins if needed
 CORS_ALLOW_CREDENTIALS = True
