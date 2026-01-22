@@ -177,6 +177,29 @@ class DailyTrackingViewSet(viewsets.ModelViewSet):
         
         return Response({'updated': updated})
 
+    @action(detail=False, methods=['post'])
+    def batch(self, request):
+        """Return trackings for multiple goals and/or dates in one request.
+
+        Expects JSON body with optional keys:
+          - goal_ids: [int, int, ...]
+          - dates: ["YYYY-MM-DD", ...]
+
+        Returns serialized DailyTracking objects that match any of the provided
+        goal_ids and dates.
+        """
+        goal_ids = request.data.get('goal_ids') or []
+        dates = request.data.get('dates') or []
+
+        qs = DailyTracking.objects.all().select_related('goal')
+        if goal_ids:
+            qs = qs.filter(goal_id__in=goal_ids)
+        if dates:
+            qs = qs.filter(date__in=dates)
+
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
+
 
 class AdhocRewardViewSet(viewsets.ModelViewSet):
     """ViewSet for managing ad-hoc rewards."""

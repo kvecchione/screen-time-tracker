@@ -452,40 +452,52 @@
 
         async function getDailyTrackingsForDate(date) {
             const dateStr = formatDate(new Date(date));
-            let trackings = [];
-            
-            for (const goal of goals) {
+                // Use batch endpoint to fetch all trackings for the given goals and date
                 try {
-                    const response = await fetch(
-                        `${API_URL}/daily-tracking/?goal_id=${goal.id}&date=${dateStr}`,
-                        { headers: { 'Content-Type': 'application/json' } }
-                    );
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        trackings.push(...(data.results || data || []));
+                    const payload = {
+                        goal_ids: goals.map(g => g.id),
+                        dates: [dateStr]
+                    };
+                    const res = await fetch(`${API_URL}/daily-tracking/batch/`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        return data || [];
                     }
-                } catch (error) {
-                    console.error('Error loading tracking:', error);
+                } catch (err) {
+                    console.error('Batch tracking fetch error', err);
                 }
-            }
-            
-            return trackings;
+                return [];
         }
 
         async function getWeeklyTrackings(weekStart) {
-            let allTrackings = [];
-            const weekEnd = new Date(weekStart);
-            weekEnd.setDate(weekEnd.getDate() + 6);
-            
-            let current = new Date(weekStart);
-            while (current <= weekEnd) {
-                const trackings = await getDailyTrackingsForDate(current);
-                allTrackings.push(...trackings);
-                current.setDate(current.getDate() + 1);
-            }
-            
-            return allTrackings;
+                    // Use batch endpoint to fetch all trackings for the week in one request
+                    const dates = [];
+                    const weekEnd = new Date(weekStart);
+                    weekEnd.setDate(weekEnd.getDate() + 6);
+                    for (let d = new Date(weekStart); d <= weekEnd; d.setDate(d.getDate() + 1)) {
+                        dates.push(formatDate(new Date(d)));
+                    }
+
+                    try {
+                        const payload = { goal_ids: goals.map(g => g.id), dates };
+                        const res = await fetch(`${API_URL}/daily-tracking/batch/`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            return data || [];
+                        }
+                    } catch (err) {
+                        console.error('Batch weekly fetch error', err);
+                    }
+
+                    return [];
         }
 
         async function getAdhocRewards() {
@@ -509,32 +521,37 @@
                 return;
             }
 
-            // Load data
-            const trackings = await getDailyTrackingsForDate(currentDate);
-            const weekStart = getWeekStart(currentDate);
-            const weekEnd = new Date(weekStart);
-            weekEnd.setDate(weekEnd.getDate() + 6);
-            const weeklyTrackings = await getWeeklyTrackings(weekStart);
+            // Fetch day and week summaries from backend to centralize calculations
+            const [dailyResp, weeklyResp, adhocRewards] = await Promise.all([
+                fetch(`${API_URL}/children/${selectedChild.id}/daily_summary/`),
+                fetch(`${API_URL}/children/${selectedChild.id}/weekly_summary/`),
+                getAdhocRewards()
+            ]);
 
-            // Get ad-hoc rewards for the week
-            const adhocRewards = await getAdhocRewards();
+            const dailySummary = dailyResp.ok ? await dailyResp.json() : null;
+            const weeklySummary = weeklyResp.ok ? await weeklyResp.json() : null;
+
+            const trackings = dailySummary?.goals || [];
+            const weekStart = weeklySummary?.week_start ? new Date(weeklySummary.week_start) : getWeekStart(currentDate);
+            const weekEnd = weeklySummary?.week_end ? new Date(weeklySummary.week_end) : new Date(new Date(weekStart).setDate(new Date(weekStart).getDate() + 6));
+
             const weeklyAdhocRewards = adhocRewards
                 .filter(reward => {
                     const rewardDate = new Date(reward.awarded_date);
                     return rewardDate >= weekStart && rewardDate <= weekEnd;
                 });
             const totalAdhocRewards = weeklyAdhocRewards.reduce((sum, r) => sum + r.minutes, 0);
-            
-            // Calculate today's potential reward
+
+            // Calculate today's potential reward (still client-side since it's goal metadata)
             const dayCode = getDayCode(currentDate);
             const dayReward = goals
                 .filter(g => g.applies_to_days && g.applies_to_days.includes(dayCode))
                 .reduce((sum, g) => sum + g.reward_minutes, 0);
-            
-            const totalEarned = trackings
+
+            const totalEarned = dailySummary?.total_earned_minutes ?? trackings
                 .filter(t => t.status === 'earned')
                 .reduce((sum, t) => sum + (t.minutes_earned || 0), 0);
-            
+
             // Add bonuses awarded today to the daily total
             const todayBonuses = adhocRewards
                 .filter(reward => {
@@ -543,15 +560,12 @@
                     return rewardDate.toDateString() === currentDateOnly.toDateString();
                 })
                 .reduce((sum, r) => sum + r.minutes, 0);
-            
+
             const totalDailyEarned = totalEarned + todayBonuses;
-            
-            // Calculate weekly total including baseline and ad-hoc rewards
-            const weeklyCumulativeEarned = weeklyTrackings
-                .filter(t => t.status === 'earned')
-                .reduce((sum, t) => sum + (t.minutes_earned || 0), 0);
-            
-            const weeklyTotal = (selectedChild.baseline_weekly_minutes || 0) + weeklyCumulativeEarned + totalAdhocRewards;
+
+            // Use backend weekly totals when available
+            const weeklyCumulativeEarned = weeklySummary?.total_earned_minutes || 0;
+            const weeklyTotal = (weeklySummary?.total_baseline_minutes || selectedChild.baseline_weekly_minutes || 0) + weeklyCumulativeEarned + totalAdhocRewards;
             
             const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
             const dayName = dayNames[currentDate.getDay()];
