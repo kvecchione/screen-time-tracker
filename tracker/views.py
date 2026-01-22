@@ -41,28 +41,51 @@ class ChildViewSet(viewsets.ModelViewSet):
         else:
             today = timezone.now().date()
         
-        trackings = DailyTracking.objects.filter(goal__child=child, date=today)
-        
-        total_target = trackings.aggregate(
-            total=Sum('goal__target_minutes')
-        )['total'] or 0
-        total_earned = trackings.aggregate(
-            total=Sum('minutes_earned')
-        )['total'] or 0
-        
-        status_counts = trackings.values('status').annotate(count=Sum(1))
-        status_dict = {item['status']: item['count'] for item in status_counts}
-        
+        # Collect goals that apply for this day
+        day_map = {0: 'mon', 1: 'tue', 2: 'wed', 3: 'thu', 4: 'fri', 5: 'sat', 6: 'sun'}
+        day_code = day_map[today.weekday()]
+
+        all_goals = ScreenTimeGoal.objects.filter(child=child, is_active=True).order_by('order')
+        applicable_goals = [g for g in all_goals if day_code in [d.strip() for d in (g.applies_to_days or '').split(',')]]
+
+        # Fetch existing trackings for applicable goals on this date
+        trackings_qs = DailyTracking.objects.filter(goal__in=applicable_goals, date=today).select_related('goal')
+
+        # Build a mapping goal_id -> tracking
+        tracking_map = {t.goal_id: t for t in trackings_qs}
+
+        # Prepare goals list: include a synthetic tracking for goals without one
+        goals_list = []
+        earned = 0
+        not_earned = 0
+        total_target = 0
+        total_earned = 0
+
+        for g in applicable_goals:
+            total_target += g.target_minutes or 0
+            t = tracking_map.get(g.id)
+            if t:
+                goals_list.append(t)
+                total_earned += t.minutes_earned or 0
+                if t.status == 'earned':
+                    earned += 1
+                elif t.status == 'not_earned':
+                    not_earned += 1
+            else:
+                # synthetic 'not_earned' tracking (default)
+                not_earned += 1
+                goals_list.append(DailyTracking(goal=g, date=today, status='not_earned', minutes_earned=0, actual_minutes=0, bonus_earned=False))
+
         summary = {
             'date': today,
             'child_id': child.id,
             'child_name': child.name,
             'total_target_minutes': total_target,
             'total_earned_minutes': total_earned,
-            'pending_goals': status_dict.get('pending', 0),
-            'earned_goals': status_dict.get('earned', 0),
-            'not_earned_goals': status_dict.get('not_earned', 0),
-            'goals': DailyTrackingSerializer(trackings, many=True).data
+            'pending_goals': 0,
+            'earned_goals': earned,
+            'not_earned_goals': not_earned,
+            'goals': DailyTrackingSerializer(goals_list, many=True).data
         }
         
         return Response(summary)
@@ -89,15 +112,17 @@ class ChildViewSet(viewsets.ModelViewSet):
             goal__child=child,
             date__gte=monday,
             date__lte=sunday
-        )
-        
-        # Calculate totals
-        total_earned = trackings.filter(
-            status='earned'
-        ).aggregate(
-            total=Sum('minutes_earned')
-        )['total'] or 0
-        
+        ).select_related('goal')
+
+        # Only count minutes for trackings where the goal applies to that tracking's weekday
+        day_map = {0: 'mon', 1: 'tue', 2: 'wed', 3: 'thu', 4: 'fri', 5: 'sat', 6: 'sun'}
+        total_earned = 0
+        for t in trackings:
+            day_code = day_map[t.date.weekday()]
+            applies = day_code in [d.strip() for d in (t.goal.applies_to_days or '').split(',')]
+            if applies and t.status == 'earned':
+                total_earned += t.minutes_earned or 0
+
         summary = {
             'child_id': child.id,
             'child_name': child.name,

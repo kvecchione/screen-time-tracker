@@ -97,14 +97,13 @@ class ScreenTimeGoal(models.Model):
 class DailyTracking(models.Model):
     """Model for daily goal tracking."""
     STATUS_CHOICES = [
-        ('pending', 'Pending'),
         ('earned', 'Earned'),
         ('not_earned', 'Not Earned'),
     ]
     
     goal = models.ForeignKey(ScreenTimeGoal, on_delete=models.CASCADE, related_name='daily_trackings')
     date = models.DateField(help_text="Date of the tracking")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='not_earned')
     minutes_earned = models.PositiveIntegerField(default=0, help_text="Minutes of screen time earned")
     actual_minutes = models.PositiveIntegerField(
         default=0,
