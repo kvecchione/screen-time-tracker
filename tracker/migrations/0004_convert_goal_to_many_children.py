@@ -113,10 +113,6 @@ class Migration(migrations.Migration):
             name="screentimegoal",
             options={"ordering": ["order", "name"]},
         ),
-        migrations.AlterUniqueTogether(
-            name="screentimegoal",
-            unique_together=set(),
-        ),
         # Add the ManyToMany field first (but don't remove old field yet)
         migrations.AddField(
             model_name="screentimegoal",
