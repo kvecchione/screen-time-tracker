@@ -47,7 +47,12 @@ class ScreenTimeGoal(models.Model):
         ('sun', 'Sunday'),
     ]
     
-    children = models.ManyToManyField(Child, related_name='goals', help_text="Children this goal applies to")
+    children = models.ManyToManyField(
+        Child,
+        related_name='goals',
+        help_text="Children this goal applies to",
+        db_table='tracker_goal_children'
+    )
     name = models.CharField(max_length=200, help_text="Goal name (e.g., 'Math Practice', 'Reading')")
     goal_type = models.CharField(
         max_length=20,

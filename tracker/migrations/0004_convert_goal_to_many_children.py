@@ -109,6 +109,7 @@ class Migration(migrations.Migration):
                 help_text="Children this goal applies to",
                 related_name="goals_new",  # Use temporary name to avoid conflict
                 to="tracker.child",
+                db_table="tracker_goal_children",
             ),
         ),
         # Migrate data from child to children
@@ -126,6 +127,7 @@ class Migration(migrations.Migration):
                 help_text="Children this goal applies to",
                 related_name="goals",
                 to="tracker.child",
+                db_table="tracker_goal_children",
             ),
         ),
     ]
