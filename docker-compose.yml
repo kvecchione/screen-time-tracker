@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_DB_ENGINE=mysql
+      - SECRET_KEY=docker-dev-key-change-in-production
+      - MYSQL_HOSTNAME=db
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=screentime
+      - MYSQL_USERNAME=screentime
+      - MYSQL_PASSWORD=screentime
+    volumes:
+      - ./:/app
+    stdin_open: true
+    tty: true
+  db:
+    image: mariadb:10.11
+    environment:
+      - MARIADB_DATABASE=screentime
+      - MARIADB_USER=screentime
+      - MARIADB_PASSWORD=screentime
+      - MARIADB_ROOT_PASSWORD=changeme
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:

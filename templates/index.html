@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen Time Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .child-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .child-btn {
+            padding: 15px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .child-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .child-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .daily-summary {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 25px;
+            background: white;
+            color: #333;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(37, 99, 235, 0.3);
+            border: 2px solid #667eea;
+        }
+
+        .summary-stat {
+            margin: 10px 0;
+            font-size: 1.1rem;
+        }
+
+        .summary-stat strong {
+            font-size: 1.5rem;
+            display: block;
+            margin-top: 5px;
+        }
+
+        .goals-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .goal-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .goal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .goal-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+            flex: 1;
+        }
+
+        .reorder-controls {
+            display: flex;
+            gap: 5px;
+        }
+
+        .reorder-btn {
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: #666;
+            transition: all 0.2s ease;
+        }
+
+        .reorder-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .reorder-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .goal-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .goal-btn {
+            flex: 1;
+            min-width: 0;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .earned-btn {
+            background: #28a745;
+            color: white;
+        }
+
+        .earned-btn:hover {
+            background: #218838;
+        }
+
+        .not-earned-btn {
+            background: white;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+
+        .not-earned-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .pending-btn {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .pending-btn:hover {
+            background: #e0a800;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .status-badge.earned {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-badge.not-earned {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-badge.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .weekly-progress {
+            margin-top: 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .add-form {
+            display: grid;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group label {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .card {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 Screen Time Tracker</h1>
+        </div>
+
+        <div class="card">
+            <h2 style="margin-bottom: 15px; text-align: center;">Child</h2>
+            <div class="child-selector" id="childSelector"></div>
+        </div>
+
+        <div id="mainContent"></div>
+
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="http://localhost:8000/admin/" target="_blank" style="display: inline-block; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; transition: all 0.3s ease;" onmouseover="this.style.background='#764ba2'" onmouseout="this.style.background='#667eea'">
+                ⚙️ Go to Admin
+            </a>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000/api';
+        
+        // Helper function to get CSRF token
+        function getCsrfToken() {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, 10) === ('csrftoken' + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(10));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        let selectedChild = null;
+        let children = [];
+        let goals = [];
+
+        // Initialize
+        async function init() {
+            await loadChildren();
+        }
+
+        async function loadChildren() {
+            try {
+                const response = await fetch(`${API_URL}/children/`, {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    children = data.results || data;
+                    renderChildren();
+                    if (children.length > 0) {
+                        // Restore previously selected child from localStorage, or use first child
+                        const savedChildId = localStorage.getItem('selectedChildId');
+                        const childId = savedChildId && children.find(c => c.id === parseInt(savedChildId)) 
+                            ? parseInt(savedChildId) 
+                            : children[0].id;
+                        
+                        selectChild(childId);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading children:', error);
+                document.getElementById('mainContent').innerHTML = `
+                    <div class="card" style="color: #dc3545;">
+                        <p>⚠️ Unable to connect to server. Make sure Django is running on http://localhost:8000</p>
+                        <p style="font-size: 0.9rem; margin-top: 10px;">Run: <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px;">python manage.py runserver</code></p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderChildren() {
+            const selector = document.getElementById('childSelector');
+            selector.innerHTML = children.map(child => `
+                <button class="child-btn ${selectedChild?.id === child.id ? 'active' : ''}" 
+                        onclick="selectChild(${child.id})">
+                    ${child.name}
+                </button>
+            `).join('');
+        }
+
+        async function selectChild(childId) {
+            const child = children.find(c => c.id === childId);
+            selectedChild = child;
+            localStorage.setItem('selectedChildId', childId);
+            renderChildren();
+            await loadGoals();
+            renderDashboard();
+        }
+
+        async function loadGoals() {
+            try {
+                const response = await fetch(`${API_URL}/goals/?child_id=${selectedChild.id}`, {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    goals = data.results || data;
+                }
+            } catch (error) {
+                console.error('Error loading goals:', error);
+            }
+        }
+
+        // Day navigation
+        let currentDate = new Date();
+
+        function getWeekStart(date = new Date()) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(d.setDate(diff));
+        }
+
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
+        }
+
+        function getDayCode(date) {
+            const day_map = {0: 'sun', 1: 'mon', 2: 'tue', 3: 'wed', 4: 'thu', 5: 'fri', 6: 'sat'};
+            return day_map[new Date(date).getDay()];
+        }
+
+
+        async function getDailyTrackingsForDate(date) {
+            const dateStr = formatDate(new Date(date));
+            let trackings = [];
+            
+            for (const goal of goals) {
+                try {
+                    const response = await fetch(
+                        `${API_URL}/daily-tracking/?goal_id=${goal.id}&date=${dateStr}`,
+                        { headers: { 'Content-Type': 'application/json' } }
+                    );
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        trackings.push(...(data.results || data || []));
+                    }
+                } catch (error) {
+                    console.error('Error loading tracking:', error);
+                }
+            }
+            
+            return trackings;
+        }
+
+        async function getWeeklyTrackings(weekStart) {
+            let allTrackings = [];
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            
+            let current = new Date(weekStart);
+            while (current <= weekEnd) {
+                const trackings = await getDailyTrackingsForDate(current);
+                allTrackings.push(...trackings);
+                current.setDate(current.getDate() + 1);
+            }
+            
+            return allTrackings;
+        }
+
+        async function getAdhocRewards() {
+            try {
+                const response = await fetch(`${API_URL}/adhoc-rewards/?child_id=${selectedChild.id}`, {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.results || data || [];
+                }
+            } catch (error) {
+                console.error('Error loading adhoc rewards:', error);
+            }
+            return [];
+        }
+
+        async function renderDashboard() {
+            if (!selectedChild) {
+                return;
+            }
+
+            // Load data
+            const trackings = await getDailyTrackingsForDate(currentDate);
+            const weekStart = getWeekStart(currentDate);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            const weeklyTrackings = await getWeeklyTrackings(weekStart);
+
+            // Get ad-hoc rewards for the week
+            const adhocRewards = await getAdhocRewards();
+            const weeklyAdhocRewards = adhocRewards
+                .filter(reward => {
+                    const rewardDate = new Date(reward.awarded_date);
+                    return rewardDate >= weekStart && rewardDate <= weekEnd;
+                });
+            const totalAdhocRewards = weeklyAdhocRewards.reduce((sum, r) => sum + r.minutes, 0);
+            
+            // Calculate today's potential reward
+            const dayCode = getDayCode(currentDate);
+            const dayReward = goals
+                .filter(g => g.applies_to_days && g.applies_to_days.includes(dayCode))
+                .reduce((sum, g) => sum + g.reward_minutes, 0);
+            
+            const totalEarned = trackings
+                .filter(t => t.status === 'earned')
+                .reduce((sum, t) => sum + (t.minutes_earned || 0), 0);
+            
+            // Add bonuses awarded today to the daily total
+            const todayBonuses = adhocRewards
+                .filter(reward => {
+                    const rewardDate = new Date(reward.awarded_date);
+                    const currentDateOnly = new Date(currentDate);
+                    return rewardDate.toDateString() === currentDateOnly.toDateString();
+                })
+                .reduce((sum, r) => sum + r.minutes, 0);
+            
+            const totalDailyEarned = totalEarned + todayBonuses;
+            
+            // Calculate weekly total including baseline and ad-hoc rewards
+            const weeklyCumulativeEarned = weeklyTrackings
+                .filter(t => t.status === 'earned')
+                .reduce((sum, t) => sum + (t.minutes_earned || 0), 0);
+            
+            const weeklyTotal = (selectedChild.baseline_weekly_minutes || 0) + weeklyCumulativeEarned + totalAdhocRewards;
+            
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const dayName = dayNames[currentDate.getDay()];
+            const dateDisplay = currentDate.toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'});
+            const weekDisplay = `${weekStart.toLocaleDateString('en-US', {month: 'short', day: 'numeric'})} - ${weekEnd.toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}`;
+            
+            let html = `
+                <div class="daily-summary">
+                    <h2>${selectedChild.name}'s Screen Time</h2>
+                    <div class="summary-stat">
+                        ${dayName} Earned
+                        <strong>${totalDailyEarned} mins</strong>
+                    </div>
+                    <div class="summary-stat">
+                        Week Total (${weekDisplay})
+                        <strong>${weeklyTotal} mins</strong>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <button class="btn-primary" style="flex: 0 1 auto; padding: 8px 12px; font-size: 0.9rem;" onclick="previousDay()">← Previous</button>
+                        <h2 style="margin: 0; flex: 1; text-align: center; font-size: 1.1rem;">${dayName} (${dateDisplay})</h2>
+                        <button class="btn-primary" style="flex: 0 1 auto; padding: 8px 12px; font-size: 0.9rem;" onclick="nextDay()">Next →</button>
+                    </div>
+                    <h2 style="margin-bottom: 15px;">Today's Goals</h2>
+                    <div class="goals-list">
+            `;
+
+            if (goals.length === 0) {
+                html += `
+                    <div class="empty-state">
+                        <p>No goals set yet. Add one to get started!</p>
+                    </div>
+                `;
+            } else {
+                goals.forEach((goal, index) => {
+                    const tracking = trackings.find(t => t.goal === goal.id);
+                    const status = tracking?.status || 'pending';
+                    const earned = tracking?.minutes_earned || 0;
+                    const bonusEarned = tracking?.bonus_earned || false;
+                    const actualMinutes = tracking?.actual_minutes || 0;
+                    
+                    // Parse days
+                    const daysArray = goal.applies_to_days ? goal.applies_to_days.split(',').map(d => d.trim()) : [];
+                    const dayNames = {mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun'};
+                    const daysDisplay = daysArray.map(d => dayNames[d]).join(', ');
+
+                    html += `
+                        <div class="goal-card">
+                            <div class="goal-header">
+                                <div class="goal-title">${goal.name}</div>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <button class="reorder-btn" onclick="showEditGoalForm(${goal.id})" title="Edit goal">✏️</button>
+                                    <div class="reorder-controls">
+                                        <button class="reorder-btn" onclick="moveGoal(${goal.id}, 'up')" ${index === 0 ? 'disabled' : ''}>↑</button>
+                                        <button class="reorder-btn" onclick="moveGoal(${goal.id}, 'down')" ${index === goals.length - 1 ? 'disabled' : ''}>↓</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.9rem; color: #666; margin: 8px 0;">
+                                ${goal.goal_type === 'tracked' ? `Reward: ${goal.reward_per_hour} mins/hr` : `Reward: ${goal.reward_minutes} mins${goal.bonus_minutes > 0 ? ` (+${goal.bonus_minutes} unprompted)` : ''}`} | Days: ${daysDisplay}
+                            </div>
+                            ${goal.goal_type === 'tracked' ? `
+                                <div style="margin: 12px 0;">
+                                    <label style="display: block; margin-bottom: 5px; font-size: 0.9rem; color: #666;">Time Spent (hours):</label>
+                                    <div style="display: flex; gap: 8px; align-items: center;">
+                                        <button class="btn-primary" style="padding: 8px 12px; font-size: 1rem;" onclick="changeTrackedHours(${goal.id}, -1)">−</button>
+                                        <input type="number" id="actualMinutes_${goal.id}" value="${Math.floor(actualMinutes / 60)}" min="0" placeholder="0" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; text-align: center;" readonly>
+                                        <button class="btn-primary" style="padding: 8px 12px; font-size: 1rem;" onclick="changeTrackedHours(${goal.id}, 1)">+</button>
+                                    </div>
+                                    ${actualMinutes > 0 ? `<div style="font-size: 0.85rem; color: #666; margin-top: 5px;">Time Spent: ${Math.floor(actualMinutes / 60)} hrs | Earned: ${Math.floor(actualMinutes / 60) * goal.reward_per_hour} mins</div>` : ''}
+                                </div>
+                            ` : `
+                                <div class="goal-controls">
+                                    <button class="goal-btn ${status === 'earned' ? 'earned-btn' : 'not-earned-btn'}" onclick="updateTracking(${goal.id}, '${status === 'earned' ? 'not_earned' : 'earned'}', ${status === 'earned' ? 0 : goal.reward_minutes}, false)">
+                                        ${status === 'earned' ? '✓ Earned' : '⭕ Mark Earned'}
+                                    </button>
+                                    ${goal.bonus_minutes > 0 && status === 'earned' ? `
+                                        <button class="goal-btn ${bonusEarned ? 'earned-btn' : 'not-earned-btn'}" style="font-size: 0.9rem;" onclick="updateTracking(${goal.id}, 'earned', ${goal.reward_minutes + (bonusEarned ? 0 : goal.bonus_minutes)}, ${!bonusEarned})">
+                                            ${bonusEarned ? '⭐ Without Being Asked!' : '⭐ Without Being Asked'}
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            `}
+                        </div>
+                    `;
+                });
+            }
+
+            html += `
+                    </div>
+            `;
+
+            // Display ad-hoc rewards if any exist
+            if (weeklyAdhocRewards.length > 0) {
+                html += `
+                    <h2 style="margin-bottom: 15px; margin-top: 20px;">⭐ Bonuses</h2>
+                    <div class="goals-list">
+                `;
+                weeklyAdhocRewards.forEach(reward => {
+                    html += `
+                        <div class="goal-card">
+                            <div class="goal-header">
+                                <div class="goal-title">${reward.reason}</div>
+                                <button class="reorder-btn" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="deleteAdhocReward(${reward.id})">✕</button>
+                            </div>
+                            <div style="font-size: 0.9rem; color: #666; margin: 8px 0;">
+                                <strong>${reward.minutes} mins</strong> • ${new Date(reward.awarded_date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `
+                    </div>
+                `;
+            }
+
+            html += `
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <button class="btn-primary" style="margin-top: 15px;" onclick="showAddGoalForm()">+ Add Goal</button>
+                        <button class="btn-primary" style="margin-top: 15px;" onclick="showAdhocRewardForm()">⭐ Give Bonus</button>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('mainContent').innerHTML = html;
+        }
+
+        function previousDay() {
+            currentDate = new Date(currentDate);
+            currentDate.setDate(currentDate.getDate() - 1);
+            renderDashboard();
+        }
+
+        function nextDay() {
+            const today = new Date();
+            currentDate = new Date(currentDate);
+            currentDate.setDate(currentDate.getDate() + 1);
+            // Don't go beyond today
+            if (currentDate > today) {
+                currentDate = new Date(today);
+            }
+            renderDashboard();
+        }
+
+        async function getDailyTrackings() {
+            return getDailyTrackingsForDate(new Date());
+        }
+
+        function changeTrackedHours(goalId, delta) {
+            const input = document.getElementById(`actualMinutes_${goalId}`);
+            let currentValue = parseInt(input.value) || 0;
+            currentValue = Math.max(0, currentValue + delta);
+            input.value = currentValue;
+            // Autosave when hours change
+            updateTrackedGoal(goalId);
+        }
+
+        async function updateTrackedGoal(goalId) {
+            const inputHours = parseFloat(document.getElementById(`actualMinutes_${goalId}`).value) || 0;
+            const actualMinutes = inputHours * 60; // Convert hours to minutes
+            const goal = goals.find(g => g.id === goalId);
+            if (!goal) return;
+
+            // Calculate minutes earned: reward_per_hour * completed hours
+            const completedHours = Math.floor(actualMinutes / 60);
+            const minutesEarned = completedHours * goal.reward_per_hour;
+            
+            // Track status as earned if any time was spent
+            const status = actualMinutes > 0 ? 'earned' : 'pending';
+
+            const dateStr = formatDate(currentDate);
+            
+            try {
+                // First, try to find existing tracking
+                let trackingId = null;
+                const trackingsResponse = await fetch(
+                    `${API_URL}/daily-tracking/?goal_id=${goalId}&date=${dateStr}`,
+                    { headers: { 'Content-Type': 'application/json' } }
+                );
+                
+                if (trackingsResponse.ok) {
+                    const data = await trackingsResponse.json();
+                    const existing = (data.results || data || [])[0];
+                    trackingId = existing?.id;
+                }
+
+                const method = trackingId ? 'PATCH' : 'POST';
+                const url = trackingId 
+                    ? `${API_URL}/daily-tracking/${trackingId}/`
+                    : `${API_URL}/daily-tracking/`;
+
+                const payload = {
+                    goal: goalId,
+                    date: dateStr,
+                    status: status,
+                    minutes_earned: minutesEarned,
+                    actual_minutes: actualMinutes,
+                    bonus_earned: false
+                };
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    await renderDashboard();
+                } else {
+                    alert('Error updating tracked goal');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating tracked goal');
+            }
+        }
+
+        async function updateTracking(goalId, status, minutes, bonusEarned = false) {
+            const dateStr = formatDate(currentDate);
+            
+            try {
+                // First, try to find existing tracking
+                let trackingId = null;
+                const trackingsResponse = await fetch(
+                    `${API_URL}/daily-tracking/?goal_id=${goalId}&date=${dateStr}`,
+                    { headers: { 'Content-Type': 'application/json' } }
+                );
+                
+                if (trackingsResponse.ok) {
+                    const data = await trackingsResponse.json();
+                    const existing = (data.results || data || [])[0];
+                    trackingId = existing?.id;
+                }
+
+                const method = trackingId ? 'PATCH' : 'POST';
+                const url = trackingId 
+                    ? `${API_URL}/daily-tracking/${trackingId}/`
+                    : `${API_URL}/daily-tracking/`;
+
+                const payload = {
+                    goal: goalId,
+                    date: dateStr,
+                    status: status,
+                    minutes_earned: minutes,
+                    bonus_earned: bonusEarned
+                };
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    await renderDashboard();
+                } else {
+                    alert('Error updating tracking');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating tracking');
+            }
+        }
+
+        async function moveGoal(goalId, direction) {
+            try {
+                // Find the goal's current position
+                const currentIndex = goals.findIndex(g => g.id === goalId);
+                if (currentIndex === -1) return;
+
+                // Calculate new index
+                let newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+                if (newIndex < 0 || newIndex >= goals.length) return;
+
+                // Create new order array
+                const newOrder = goals.map(g => g.id);
+                [newOrder[currentIndex], newOrder[newIndex]] = [newOrder[newIndex], newOrder[currentIndex]];
+
+                // Send reorder request
+                const response = await fetch(`${API_URL}/goals/reorder/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({ goals: newOrder })
+                });
+
+                if (response.ok) {
+                    // Update local goals array with new order
+                    await loadGoals();
+                    await renderDashboard();
+                } else {
+                    alert('Error reordering goals');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error reordering goals');
+            }
+        }
+
+        function showAddGoalForm() {
+            const form = `
+                <div class="card">
+                    <h2 style="margin-bottom: 15px;">Add New Goal</h2>
+                    <form onsubmit="createGoal(event)" novalidate>
+                        <div class="form-group">
+                            <label>Goal Name</label>
+                            <input type="text" id="goalName" placeholder="e.g., Math Practice, Read a book">
+                        </div>
+                        <div class="form-group">
+                            <label>Goal Type</label>
+                            <select id="goalType" onchange="toggleTargetMinutes()" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="binary">Binary (Earned/Not Earned)</option>
+                                <option value="tracked">Tracked (Hours)</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="rewardMinutesGroup">
+                            <label>Reward Minutes</label>
+                            <input type="number" id="rewardMinutes" placeholder="30" min="1">
+                        </div>
+                        <div class="form-group" id="rewardPerHourGroup" style="display: none;">
+                            <label>Reward Minutes per Hour</label>
+                            <input type="number" id="rewardPerHour" placeholder="30" min="1">
+                        </div>
+                        <div class="form-group" id="bonusMinutesGroup">
+                            <label>Bonus Minutes (without being asked) - Optional</label>
+                            <input type="number" id="bonusMinutes" placeholder="10" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Applies to Days</label>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px;">
+                                ${['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map(day => {
+                                    const dayNames = {mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday'};
+                                    return `<label style="display: flex; align-items: center;">
+                                        <input type="checkbox" value="${day}" class="day-checkbox" ${['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].indexOf(day) < 5 ? 'checked' : ''} style="margin-right: 6px;">
+                                        ${dayNames[day]}
+                                    </label>`;
+                                }).join('')}
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary" style="width: 100%;">Create Goal</button>
+                        <button type="button" class="btn-primary" style="width: 100%; background: #999; margin-top: 10px;" onclick="renderDashboard()">Cancel</button>
+                    </form>
+                </div>
+            `;
+            document.getElementById('mainContent').innerHTML = form;
+        }
+
+        async function createGoal(e) {
+            e.preventDefault();
+            const selectedDays = Array.from(document.querySelectorAll('.day-checkbox:checked')).map(cb => cb.value).join(',');
+            const goalType = document.getElementById('goalType').value;
+            
+            if (!selectedDays) {
+                alert('Please select at least one day');
+                return;
+            }
+            
+            let rewardMinutes = 0;
+            let rewardPerHour = 0;
+            let bonusMinutes = 0;
+            
+            if (goalType === 'binary') {
+                rewardMinutes = parseInt(document.getElementById('rewardMinutes').value) || 0;
+                bonusMinutes = parseInt(document.getElementById('bonusMinutes').value) || 0;
+                if (rewardMinutes <= 0) {
+                    alert('Please enter a reward amount for this goal');
+                    return;
+                }
+            } else {
+                rewardPerHour = parseInt(document.getElementById('rewardPerHour').value) || 0;
+                if (rewardPerHour <= 0) {
+                    alert('Please enter a reward per hour amount for this goal');
+                    return;
+                }
+            }
+            
+            const payload = {
+                child_id: selectedChild.id,
+                name: document.getElementById('goalName').value,
+                goal_type: goalType,
+                reward_minutes: rewardMinutes,
+                reward_per_hour: rewardPerHour,
+                bonus_minutes: bonusMinutes,
+                target_minutes: 0,
+                applies_to_days: selectedDays,
+                is_active: true
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/goals/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    await loadGoals();
+                    renderDashboard();
+                } else {
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        const errorData = await response.json();
+                        console.error('Error response:', errorData);
+                        alert('Error creating goal: ' + JSON.stringify(errorData));
+                    } else {
+                        const text = await response.text();
+                        console.error('Error response (text):', text);
+                        alert('Error creating goal: ' + response.status + ' ' + response.statusText);
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error creating goal: ' + error.message);
+            }
+        }
+
+        function showEditGoalForm(goalId) {
+            const goal = goals.find(g => g.id === goalId);
+            if (!goal) return;
+            
+            const daysArray = goal.applies_to_days ? goal.applies_to_days.split(',').map(d => d.trim()) : [];
+            
+            const form = `
+                <div class="card">
+                    <h2 style="margin-bottom: 15px;">Edit Goal</h2>
+                    <form onsubmit="updateGoal(event, ${goalId})" novalidate>
+                        <div class="form-group">
+                            <label>Goal Name</label>
+                            <input type="text" id="goalName" placeholder="e.g., Math Practice, Read a book" value="${goal.name}">
+                        </div>
+                        <div class="form-group">
+                            <label>Goal Type</label>
+                            <select id="goalType" onchange="toggleTargetMinutes()" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="binary" ${goal.goal_type === 'binary' ? 'selected' : ''}>Binary (Earned/Not Earned)</option>
+                                <option value="tracked" ${goal.goal_type === 'tracked' ? 'selected' : ''}>Tracked (Hours)</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="rewardMinutesGroup" style="display: ${goal.goal_type === 'binary' ? 'block' : 'none'};">
+                            <label>Reward Minutes</label>
+                            <input type="number" id="rewardMinutes" placeholder="30" min="1" value="${goal.reward_minutes || 0}">
+                        </div>
+                        <div class="form-group" id="rewardPerHourGroup" style="display: ${goal.goal_type === 'tracked' ? 'block' : 'none'};">
+                            <label>Reward Minutes per Hour</label>
+                            <input type="number" id="rewardPerHour" placeholder="30" min="1" value="${goal.reward_per_hour || 0}">
+                        </div>
+                        <div class="form-group" id="bonusMinutesGroup" style="display: ${goal.goal_type === 'binary' ? 'block' : 'none'};">
+                            <label>Bonus Minutes (without being asked) - Optional</label>
+                            <input type="number" id="bonusMinutes" placeholder="10" min="0" value="${goal.bonus_minutes || 0}">
+                        </div>
+                        <div class="form-group">
+                            <label>Applies to Days</label>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 8px;">
+                                ${['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map(day => {
+                                    const dayNames = {mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday'};
+                                    return `<label style="display: flex; align-items: center;">
+                                        <input type="checkbox" value="${day}" class="day-checkbox" ${daysArray.includes(day) ? 'checked' : ''} style="margin-right: 6px;">
+                                        ${dayNames[day]}
+                                    </label>`;
+                                }).join('')}
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-primary" style="width: 100%;">Update Goal</button>
+                        <button type="button" class="btn-primary" style="width: 100%; background: #999; margin-top: 10px;" onclick="renderDashboard()">Cancel</button>
+                    </form>
+                </div>
+            `;
+            document.getElementById('mainContent').innerHTML = form;
+        }
+
+        async function updateGoal(e, goalId) {
+            e.preventDefault();
+            const selectedDays = Array.from(document.querySelectorAll('.day-checkbox:checked')).map(cb => cb.value).join(',');
+            const goalType = document.getElementById('goalType').value;
+            const goalName = document.getElementById('goalName').value;
+            
+            if (!goalName) {
+                alert('Please enter a goal name');
+                return;
+            }
+            
+            if (!selectedDays) {
+                alert('Please select at least one day');
+                return;
+            }
+            
+            let rewardMinutes = 0;
+            let rewardPerHour = 0;
+            let bonusMinutes = 0;
+            
+            if (goalType === 'binary') {
+                rewardMinutes = parseInt(document.getElementById('rewardMinutes').value) || 0;
+                bonusMinutes = parseInt(document.getElementById('bonusMinutes').value) || 0;
+                if (rewardMinutes <= 0) {
+                    alert('Please enter a reward amount for this goal');
+                    return;
+                }
+            } else {
+                rewardPerHour = parseInt(document.getElementById('rewardPerHour').value) || 0;
+                if (rewardPerHour <= 0) {
+                    alert('Please enter a reward per hour amount for this goal');
+                    return;
+                }
+            }
+            
+            const payload = {
+                child_id: selectedChild.id,
+                name: goalName,
+                goal_type: goalType,
+                reward_minutes: rewardMinutes,
+                reward_per_hour: rewardPerHour,
+                bonus_minutes: bonusMinutes,
+                target_minutes: 0,
+                applies_to_days: selectedDays,
+                is_active: true
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/goals/${goalId}/`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    await loadGoals();
+                    renderDashboard();
+                } else {
+                    const contentType = response.headers.get('content-type');
+                    if (contentType && contentType.includes('application/json')) {
+                        const errorData = await response.json();
+                        console.error('Error response:', errorData);
+                        alert('Error updating goal: ' + JSON.stringify(errorData));
+                    } else {
+                        const text = await response.text();
+                        console.error('Error response (text):', text);
+                        alert('Error updating goal: ' + response.status + ' ' + response.statusText);
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating goal: ' + error.message);
+            }
+        }
+
+        function toggleTargetMinutes() {
+            const goalType = document.getElementById('goalType').value;
+            const rewardMinutesGroup = document.getElementById('rewardMinutesGroup');
+            const rewardPerHourGroup = document.getElementById('rewardPerHourGroup');
+            const bonusMinutesGroup = document.getElementById('bonusMinutesGroup');
+            
+            if (goalType === 'tracked') {
+                rewardMinutesGroup.style.display = 'none';
+                rewardPerHourGroup.style.display = 'block';
+                bonusMinutesGroup.style.display = 'none';
+            } else {
+                rewardMinutesGroup.style.display = 'block';
+                rewardPerHourGroup.style.display = 'none';
+                bonusMinutesGroup.style.display = 'block';
+            }
+        }
+
+        function showAdhocRewardForm() {
+            const form = `
+                <div class="card">
+                    <h2 style="margin-bottom: 15px;">Give Bonus ⭐</h2>
+                    <form onsubmit="createAdhocReward(event)">
+                        <div class="form-group">
+                            <label>Reward Minutes</label>
+                            <input type="number" id="rewardMinutes" required placeholder="30" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Reason</label>
+                            <input type="text" id="rewardReason" required placeholder="e.g., Great effort on homework">
+                        </div>
+                        <button type="submit" class="btn-primary" style="width: 100%;">Give Reward</button>
+                        <button type="button" class="btn-primary" style="width: 100%; background: #999; margin-top: 10px;" onclick="renderDashboard()">Cancel</button>
+                    </form>
+                </div>
+            `;
+            document.getElementById('mainContent').innerHTML = form;
+        }
+
+        async function createAdhocReward(e) {
+            e.preventDefault();
+            
+            const payload = {
+                child: selectedChild.id,
+                minutes: parseInt(document.getElementById('rewardMinutes').value),
+                reason: document.getElementById('rewardReason').value
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/adhoc-rewards/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    renderDashboard();
+                } else {
+                    const errorData = await response.json();
+                    console.error('Error response:', errorData);
+                    alert('Error creating reward: ' + JSON.stringify(errorData));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error creating reward: ' + error.message);
+            }
+        }
+
+        async function deleteAdhocReward(rewardId) {
+            if (!confirm('Are you sure you want to delete this bonus?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/adhoc-rewards/${rewardId}/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                });
+
+                if (response.ok) {
+                    renderDashboard();
+                } else {
+                    alert('Error deleting reward');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error deleting reward: ' + error.message);
+            }
+        }
+
+        function showAddChildForm() {
+            const form = `
+                <div class="card">
+                    <h2 style="margin-bottom: 15px;">Add New Child</h2>
+                    <form onsubmit="createChild(event)">
+                        <div class="form-group">
+                            <label>Child's Name</label>
+                            <input type="text" id="childName" required placeholder="Enter name">
+                        </div>
+                        <button type="submit" class="btn-primary" style="width: 100%;">Add Child</button>
+                        <button type="button" class="btn-primary" style="width: 100%; background: #999; margin-top: 10px;" onclick="init()">Cancel</button>
+                    </form>
+                </div>
+            `;
+            document.getElementById('mainContent').innerHTML = form;
+        }
+
+        async function createChild(e) {
+            e.preventDefault();
+            const payload = {
+                name: document.getElementById('childName').value
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/children/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    await loadChildren();
+                    const newChild = await response.json();
+                    selectChild(newChild.id);
+                } else {
+                    alert('Error creating child');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error creating child');
+            }
+        }
+
+        // Start the app
+        init();
+    </script>
+</body>
+</html>
