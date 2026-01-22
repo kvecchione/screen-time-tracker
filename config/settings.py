@@ -11,6 +11,12 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'https://screentime.apps.kvecchione.com', 
+    'https://screentime.zt.kvecchione.com'
+]
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -139,9 +145,3 @@ else:
         'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
         'PAGE_SIZE': 100,
     }
-
-# CORS: allow all origins (disabled protections)
-CORS_ALLOW_ALL_ORIGINS = True
-
-# Allow credentials across origins if needed
-CORS_ALLOW_CREDENTIALS = True
