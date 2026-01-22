@@ -109,6 +109,8 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(drop_child_fk_index),
+        # If a previous failed run created the M2M through table, drop it to avoid duplicate table errors.
+        migrations.RunSQL(sql="DROP TABLE IF EXISTS tracker_goal_children", reverse_sql=""),
         migrations.AlterModelOptions(
             name="screentimegoal",
             options={"ordering": ["order", "name"]},
