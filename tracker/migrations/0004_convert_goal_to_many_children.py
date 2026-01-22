@@ -108,6 +108,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.RunPython(drop_child_fk_index),
         migrations.AlterModelOptions(
             name="screentimegoal",
             options={"ordering": ["order", "name"]},
@@ -116,7 +117,6 @@ class Migration(migrations.Migration):
             name="screentimegoal",
             unique_together=set(),
         ),
-        migrations.RunPython(drop_child_fk_index),
         # Add the ManyToMany field first (but don't remove old field yet)
         migrations.AddField(
             model_name="screentimegoal",
