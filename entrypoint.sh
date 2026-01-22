@@ -4,7 +4,7 @@ set -e
 # Run database migrations
 python manage.py migrate --noinput
 
-# Optionally create a superuser (defaults match previous compose command)
+# Optionally create a superuser 
 if [ "${CREATE_SUPERUSER:-false}" = "true" ]; then
   python manage.py create_superuser \
     --username "${DJANGO_SUPERUSER_USERNAME:-admin}" \
