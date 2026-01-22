@@ -24,13 +24,19 @@ class ChildAdmin(admin.ModelAdmin):
 
 @admin.register(ScreenTimeGoal)
 class ScreenTimeGoalAdmin(admin.ModelAdmin):
-    list_display = ['name', 'child', 'goal_type', 'reward_minutes', 'reward_per_hour', 'bonus_minutes', 'target_minutes', 'applies_to_days', 'is_active']
-    list_filter = ['is_active', 'goal_type', 'child', 'created_at']
-    search_fields = ['name', 'child__name']
+    list_display = ['name', 'get_children', 'goal_type', 'reward_minutes', 'reward_per_hour', 'bonus_minutes', 'target_minutes', 'applies_to_days', 'is_active']
+    list_filter = ['is_active', 'goal_type', 'created_at']
+    search_fields = ['name', 'children__name']
     readonly_fields = ['created_at', 'updated_at']
+    filter_horizontal = ['children']
+    
+    def get_children(self, obj):
+        return ', '.join([c.name for c in obj.children.all()])
+    get_children.short_description = 'Children'
+    
     fieldsets = (
         ('Basic Info', {
-            'fields': ('child', 'name', 'goal_type', 'is_active')
+            'fields': ('children', 'name', 'goal_type', 'is_active')
         }),
         ('Binary Goal Settings', {
             'fields': ('reward_minutes', 'bonus_minutes', 'applies_to_days'),
@@ -49,15 +55,15 @@ class ScreenTimeGoalAdmin(admin.ModelAdmin):
 
 @admin.register(DailyTracking)
 class DailyTrackingAdmin(admin.ModelAdmin):
-    list_display = ['goal', 'date', 'status', 'minutes_earned', 'actual_minutes', 'bonus_earned']
-    list_filter = ['status', 'bonus_earned', 'date', 'goal__child', 'created_at']
-    search_fields = ['goal__name', 'goal__child__name']
+    list_display = ['child', 'goal', 'date', 'status', 'minutes_earned', 'actual_minutes', 'bonus_earned']
+    list_filter = ['status', 'bonus_earned', 'date', 'child', 'created_at']
+    search_fields = ['goal__name', 'goal__children__name', 'child__name']
     readonly_fields = ['created_at', 'updated_at']
     date_hierarchy = 'date'
     
     fieldsets = (
         ('Goal & Date', {
-            'fields': ('goal', 'date')
+            'fields': ('child', 'goal', 'date')
         }),
         ('Performance', {
             'fields': ('status', 'minutes_earned', 'actual_minutes', 'bonus_earned', 'notes')

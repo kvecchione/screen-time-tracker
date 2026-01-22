@@ -45,11 +45,11 @@ class ChildViewSet(viewsets.ModelViewSet):
         day_map = {0: 'mon', 1: 'tue', 2: 'wed', 3: 'thu', 4: 'fri', 5: 'sat', 6: 'sun'}
         day_code = day_map[today.weekday()]
 
-        all_goals = ScreenTimeGoal.objects.filter(child=child, is_active=True).order_by('order')
+        all_goals = ScreenTimeGoal.objects.filter(children=child, is_active=True).order_by('order')
         applicable_goals = [g for g in all_goals if day_code in [d.strip() for d in (g.applies_to_days or '').split(',')]]
 
-        # Fetch existing trackings for applicable goals on this date
-        trackings_qs = DailyTracking.objects.filter(goal__in=applicable_goals, date=today).select_related('goal')
+        # Fetch existing trackings for applicable goals on this date for this child
+        trackings_qs = DailyTracking.objects.filter(child=child, goal__in=applicable_goals, date=today).select_related('goal')
 
         # Build a mapping goal_id -> tracking
         tracking_map = {t.goal_id: t for t in trackings_qs}
@@ -74,7 +74,7 @@ class ChildViewSet(viewsets.ModelViewSet):
             else:
                 # synthetic 'not_earned' tracking (default)
                 not_earned += 1
-                goals_list.append(DailyTracking(goal=g, date=today, status='not_earned', minutes_earned=0, actual_minutes=0, bonus_earned=False))
+                goals_list.append(DailyTracking(child=child, goal=g, date=today, status='not_earned', minutes_earned=0, actual_minutes=0, bonus_earned=False))
 
         summary = {
             'date': today,
@@ -107,14 +107,15 @@ class ChildViewSet(viewsets.ModelViewSet):
         monday = ref_date - timedelta(days=ref_date.weekday())
         sunday = monday + timedelta(days=6)
         
-        # Get all trackings for the week
+        # Get all trackings for the week for this child
         trackings = DailyTracking.objects.filter(
-            goal__child=child,
+            child=child,
             date__gte=monday,
             date__lte=sunday
         ).select_related('goal')
 
         # Only count minutes for trackings where the goal applies to that tracking's weekday
+        # AND the child is still assigned to that goal
         day_map = {0: 'mon', 1: 'tue', 2: 'wed', 3: 'thu', 4: 'fri', 5: 'sat', 6: 'sun'}
         total_earned = 0
         for t in trackings:
@@ -145,7 +146,7 @@ class ScreenTimeGoalViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         child_id = self.request.query_params.get('child_id')
         if child_id:
-            return ScreenTimeGoal.objects.filter(child_id=child_id).order_by('order')
+            return ScreenTimeGoal.objects.filter(children__id=child_id).order_by('order').distinct()
         return ScreenTimeGoal.objects.all().order_by('order')
     
     @action(detail=False, methods=['post'])
@@ -164,12 +165,6 @@ class ScreenTimeGoalViewSet(viewsets.ModelViewSet):
                 pass
         
         return Response({'updated': updated_goals})
-    
-    def perform_create(self, serializer):
-        child_id = self.request.data.get('child_id')
-        child = Child.objects.get(id=child_id)
-        
-        goal = serializer.save(child=child)
 
 
 class DailyTrackingViewSet(viewsets.ModelViewSet):
@@ -181,9 +176,12 @@ class DailyTrackingViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         goal_id = self.request.query_params.get('goal_id')
         date = self.request.query_params.get('date')
+        child_id = self.request.query_params.get('child_id')
         
         queryset = DailyTracking.objects.all()
         
+        if child_id:
+            queryset = queryset.filter(child_id=child_id)
         if goal_id:
             queryset = queryset.filter(goal_id=goal_id)
         if date:

@@ -31,7 +31,7 @@ class Child(models.Model):
 
 
 class ScreenTimeGoal(models.Model):
-    """Model representing a daily screen time goal for a child."""
+    """Model representing a daily screen time goal for children."""
     GOAL_TYPES = [
         ('binary', 'Binary (Earned/Not Earned)'),
         ('tracked', 'Tracked (Hours/Minutes)'),
@@ -47,7 +47,7 @@ class ScreenTimeGoal(models.Model):
         ('sun', 'Sunday'),
     ]
     
-    child = models.ForeignKey(Child, on_delete=models.CASCADE, related_name='goals')
+    children = models.ManyToManyField(Child, related_name='goals', help_text="Children this goal applies to")
     name = models.CharField(max_length=200, help_text="Goal name (e.g., 'Math Practice', 'Reading')")
     goal_type = models.CharField(
         max_length=20,
@@ -79,11 +79,11 @@ class ScreenTimeGoal(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        ordering = ['child', 'order', 'name']
-        unique_together = ['child', 'name']
+        ordering = ['order', 'name']
     
     def __str__(self):
-        return f"{self.child.name} - {self.name}"
+        child_names = ', '.join([c.name for c in self.children.all()])
+        return f"{self.name} ({child_names})" if child_names else self.name
     
     def applies_today(self):
         """Check if this goal applies today."""
@@ -101,6 +101,7 @@ class DailyTracking(models.Model):
         ('not_earned', 'Not Earned'),
     ]
     
+    child = models.ForeignKey(Child, on_delete=models.CASCADE, related_name='daily_trackings', help_text="Child this tracking belongs to")
     goal = models.ForeignKey(ScreenTimeGoal, on_delete=models.CASCADE, related_name='daily_trackings')
     date = models.DateField(help_text="Date of the tracking")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='not_earned')
@@ -116,14 +117,14 @@ class DailyTracking(models.Model):
     
     class Meta:
         ordering = ['-date', 'goal']
-        unique_together = ['goal', 'date']
+        unique_together = ['child', 'goal', 'date']
         indexes = [
-            models.Index(fields=['date', 'goal']),
+            models.Index(fields=['child', 'date', 'goal']),
             models.Index(fields=['goal', 'date']),
         ]
     
     def __str__(self):
-        return f"{self.goal} - {self.date} ({self.status})"
+        return f"{self.child.name} - {self.goal} - {self.date} ({self.status})"
 
 
 class AdhocReward(models.Model):
