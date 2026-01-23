@@ -150,3 +150,23 @@ class AdhocReward(models.Model):
     def __str__(self):
         return f"{self.child.name} - {self.minutes} mins ({self.reason})"
 
+
+class AdhocPenalty(models.Model):
+    """Model for manually applied ad-hoc penalties to a child."""
+    child = models.ForeignKey(Child, on_delete=models.CASCADE, related_name='adhoc_penalties')
+    minutes = models.PositiveIntegerField(help_text="Minutes penalized")
+    reason = models.CharField(max_length=200, help_text="Reason for the penalty")
+    applied_date = models.DateField(auto_now_add=True, help_text="Date the penalty was applied")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-applied_date', '-created_at']
+        indexes = [
+            models.Index(fields=['child', 'applied_date']),
+        ]
+        verbose_name_plural = "penalties"
+    
+    def __str__(self):
+        return f"{self.child.name} - {self.minutes} mins penalty ({self.reason})"
+

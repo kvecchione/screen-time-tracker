@@ -2,7 +2,7 @@
 Serializers for the Screen Time Tracker API.
 """
 from rest_framework import serializers
-from .models import Child, ScreenTimeGoal, DailyTracking, AdhocReward
+from .models import Child, ScreenTimeGoal, DailyTracking, AdhocReward, AdhocPenalty
 
 
 class ScreenTimeGoalSerializer(serializers.ModelSerializer):
@@ -75,3 +75,12 @@ class AdhocRewardSerializer(serializers.ModelSerializer):
             'id', 'child', 'minutes', 'reason', 'awarded_date', 'created_at'
         ]
         read_only_fields = ['id', 'awarded_date', 'created_at']
+
+
+class AdhocPenaltySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AdhocPenalty
+        fields = [
+            'id', 'child', 'minutes', 'reason', 'applied_date', 'created_at'
+        ]
+        read_only_fields = ['id', 'applied_date', 'created_at']

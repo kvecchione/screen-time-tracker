@@ -2,7 +2,7 @@
 Admin interface for the Screen Time Tracker.
 """
 from django.contrib import admin
-from .models import Child, ScreenTimeGoal, DailyTracking, AdhocReward
+from .models import Child, ScreenTimeGoal, DailyTracking, AdhocReward, AdhocPenalty
 
 
 @admin.register(Child)
@@ -89,6 +89,25 @@ class AdhocRewardAdmin(admin.ModelAdmin):
         }),
         ('Metadata', {
             'fields': ('awarded_date', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(AdhocPenalty)
+class AdhocPenaltyAdmin(admin.ModelAdmin):
+    list_display = ['child', 'minutes', 'reason', 'applied_date']
+    list_filter = ['applied_date', 'child', 'created_at']
+    search_fields = ['reason', 'child__name']
+    readonly_fields = ['applied_date', 'created_at', 'updated_at']
+    date_hierarchy = 'applied_date'
+    
+    fieldsets = (
+        ('Child & Penalty', {
+            'fields': ('child', 'minutes', 'reason')
+        }),
+        ('Metadata', {
+            'fields': ('applied_date', 'created_at', 'updated_at'),
             'classes': ('collapse',)
         }),
     )

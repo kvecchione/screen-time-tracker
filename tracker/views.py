@@ -9,10 +9,10 @@ from django.utils import timezone
 from django.db.models import Sum, Q
 from datetime import datetime, timedelta
 
-from .models import Child, ScreenTimeGoal, DailyTracking, AdhocReward
+from .models import Child, ScreenTimeGoal, DailyTracking, AdhocReward, AdhocPenalty
 from .serializers import (
     ChildDetailSerializer, ChildListSerializer, ScreenTimeGoalSerializer,
-    DailyTrackingSerializer, AdhocRewardSerializer,
+    DailyTrackingSerializer, AdhocRewardSerializer, AdhocPenaltySerializer,
     DailyTrackingSummarySerializer
 )
 
@@ -252,6 +252,22 @@ class AdhocRewardViewSet(viewsets.ModelViewSet):
         if child_id:
             return AdhocReward.objects.filter(child_id=child_id)
         return AdhocReward.objects.all()
+    
+    def perform_create(self, serializer):
+        serializer.save()
+
+
+class AdhocPenaltyViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing ad-hoc penalties."""
+    queryset = AdhocPenalty.objects.all()
+    serializer_class = AdhocPenaltySerializer
+    permission_classes = [AllowAny]
+    
+    def get_queryset(self):
+        child_id = self.request.query_params.get('child_id')
+        if child_id:
+            return AdhocPenalty.objects.filter(child_id=child_id)
+        return AdhocPenalty.objects.all()
     
     def perform_create(self, serializer):
         serializer.save()

@@ -330,7 +330,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📱 Screen Time Tracker</h1>
+            <h1>Screen Time Tracker</h1>
         </div>
 
         <div class="card" id="childSelectorCard">
@@ -342,7 +342,7 @@
 
         <div style="text-align: center; margin-top: 30px;">
                 <a href="/admin/" target="_blank" style="display: inline-block; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; transition: all 0.3s ease;" onmouseover="this.style.background='#764ba2'" onmouseout="this.style.background='#667eea'">
-                ⚙️ Go to Admin
+                ⚙️ Admin
             </a>
         </div>
     </div>
@@ -535,6 +535,22 @@
             return [];
         }
 
+        async function getAdhocPenalties() {
+            try {
+                const response = await fetch(`${API_URL}/adhoc-penalties/?child_id=${selectedChild.id}`, {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.results || data || [];
+                }
+            } catch (error) {
+                console.error('Error loading adhoc penalties:', error);
+            }
+            return [];
+        }
+
         async function renderDashboard() {
             showChildSelector();
             if (!selectedChild) {
@@ -542,10 +558,11 @@
             }
 
             // Fetch day and week summaries from backend to centralize calculations
-            const [dailyResp, weeklyResp, adhocRewards] = await Promise.all([
+            const [dailyResp, weeklyResp, adhocRewards, adhocPenalties] = await Promise.all([
                 fetch(`${API_URL}/children/${selectedChild.id}/daily_summary/?date=${formatDate(currentDate)}`),
                 fetch(`${API_URL}/children/${selectedChild.id}/weekly_summary/?date=${formatDate(currentDate)}`),
-                getAdhocRewards()
+                getAdhocRewards(),
+                getAdhocPenalties()
             ]);
 
             const dailySummary = dailyResp.ok ? await dailyResp.json() : null;
@@ -562,12 +579,27 @@
                 });
             const totalAdhocRewards = weeklyAdhocRewards.reduce((sum, r) => sum + r.minutes, 0);
 
+            const weeklyAdhocPenalties = adhocPenalties
+                .filter(penalty => {
+                    const penaltyDate = new Date(penalty.applied_date);
+                    return penaltyDate >= weekStart && penaltyDate <= weekEnd;
+                });
+            const totalAdhocPenalties = weeklyAdhocPenalties.reduce((sum, p) => sum + p.minutes, 0);
+
             // Only show the ad-hoc bonus entries for the currently selected day
             const dailyAdhocRewards = adhocRewards
                 .filter(reward => {
                     const rewardDate = new Date(reward.awarded_date);
                     const currentDateOnly = new Date(currentDate);
                     return rewardDate.toDateString() === currentDateOnly.toDateString();
+                });
+
+            // Only show the ad-hoc penalty entries for the currently selected day
+            const dailyAdhocPenalties = adhocPenalties
+                .filter(penalty => {
+                    const penaltyDate = new Date(penalty.applied_date);
+                    const currentDateOnly = new Date(currentDate);
+                    return penaltyDate.toDateString() === currentDateOnly.toDateString();
                 });
 
             // Calculate today's potential reward (still client-side since it's goal metadata)
@@ -587,8 +619,8 @@
                 })
                 .reduce((sum, t) => sum + (t.minutes_earned || 0), 0);
 
-            // Add bonuses awarded today to the daily total
-            const todayBonuses = adhocRewards
+            // Add rewards awarded today to the daily total
+            const todayRewards = adhocRewards
                 .filter(reward => {
                     const rewardDate = new Date(reward.awarded_date);
                     const currentDateOnly = new Date(currentDate);
@@ -596,11 +628,20 @@
                 })
                 .reduce((sum, r) => sum + r.minutes, 0);
 
-            const totalDailyEarned = totalEarned + todayBonuses;
+            // Subtract penalties applied today from the daily total
+            const todayPenalties = adhocPenalties
+                .filter(penalty => {
+                    const penaltyDate = new Date(penalty.applied_date);
+                    const currentDateOnly = new Date(currentDate);
+                    return penaltyDate.toDateString() === currentDateOnly.toDateString();
+                })
+                .reduce((sum, p) => sum + p.minutes, 0);
+
+            const totalDailyEarned = totalEarned + todayRewards - todayPenalties;
 
             // Use backend weekly totals when available
             const weeklyCumulativeEarned = weeklySummary?.total_earned_minutes || 0;
-            const weeklyTotal = (weeklySummary?.total_baseline_minutes || selectedChild.baseline_weekly_minutes || 0) + weeklyCumulativeEarned + totalAdhocRewards;
+            const weeklyTotal = (weeklySummary?.total_baseline_minutes || selectedChild.baseline_weekly_minutes || 0) + weeklyCumulativeEarned + totalAdhocRewards - totalAdhocPenalties;
             
             const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
             const dayName = dayNames[currentDate.getDay()];
@@ -713,7 +754,7 @@
             // Display ad-hoc rewards if any exist
             if (dailyAdhocRewards.length > 0) {
                 html += `
-                    <h2 style="margin-bottom: 15px; margin-top: 20px;">⭐ Bonuses</h2>
+                    <h2 style="margin-bottom: 15px; margin-top: 20px;">⭐ Rewards</h2>
                     <div class="goals-list">
                 `;
                 dailyAdhocRewards.forEach(reward => {
@@ -734,11 +775,36 @@
                 `;
             }
 
+            // Display ad-hoc penalties if any exist
+            if (dailyAdhocPenalties.length > 0) {
+                html += `
+                    <h2 style="margin-bottom: 15px; margin-top: 20px;">⚠️ Penalties</h2>
+                    <div class="goals-list">
+                `;
+                dailyAdhocPenalties.forEach(penalty => {
+                    html += `
+                        <div class="goal-card">
+                            <div class="goal-header">
+                                <div class="goal-title">${penalty.reason}</div>
+                                <button class="reorder-btn" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="deleteAdhocPenalty(${penalty.id})">✕</button>
+                            </div>
+                            <div style="font-size: 0.9rem; color: #666; margin: 8px 0;">
+                                <strong>-${penalty.minutes} mins</strong> • ${new Date(penalty.applied_date).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `
+                    </div>
+                `;
+            }
+
             html += `
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
                         <button class="btn-primary" style="margin-top: 15px;" onclick="showAddGoalForm()">+ Add Goal</button>
-                        <button class="btn-primary" style="margin-top: 15px;" onclick="showAdhocRewardForm()">⭐ Give Bonus</button>
+                        <button class="btn-primary" style="margin-top: 15px;" onclick="showAdhocRewardForm()">⭐ Give Reward</button>
+                        <button class="btn-primary" style="margin-top: 15px;" onclick="showAdhocPenaltyForm()">⚠️ Give Penalty</button>
                     </div>
                 </div>
             `;
@@ -1331,6 +1397,104 @@
             } catch (error) {
                 console.error('Error:', error);
                 alert('Error deleting reward: ' + error.message);
+            }
+        }
+
+        function showAdhocPenaltyForm() {
+            document.getElementById('childSelectorCard').style.display = 'none';
+            
+            const form = `
+                <div class="card">
+                    <h2 style="margin-bottom: 15px;">Apply Penalty ⚠️</h2>
+                    <form onsubmit="createAdhocPenalty(event)">
+                        <div class="form-group">
+                            <label>Select Child</label>
+                            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+                                ${children.map(child => `
+                                    <label style="display: flex; align-items: center;">
+                                        <input type="radio" name="penaltyChild" value="${child.id}" class="penalty-child" ${children[0]?.id === child.id ? 'checked' : ''} style="margin-right: 6px;">
+                                        ${child.name}
+                                    </label>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Penalty Minutes</label>
+                            <input type="number" id="penaltyMinutes" required placeholder="15" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Reason</label>
+                            <input type="text" id="penaltyReason" required placeholder="e.g., Did not follow instructions">
+                        </div>
+                        <button type="submit" class="btn-primary" style="width: 100%;">Apply Penalty</button>
+                        <button type="button" class="btn-primary" style="width: 100%; background: #999; margin-top: 10px;" onclick="renderDashboard()">Cancel</button>
+                    </form>
+                </div>
+            `;
+            document.getElementById('mainContent').innerHTML = form;
+            selectedChild = children[0];
+        }
+
+        async function createAdhocPenalty(e) {
+            e.preventDefault();
+            
+            const selectedChildId = document.querySelector('input[name="penaltyChild"]:checked')?.value;
+            if (!selectedChildId) {
+                alert('Please select a child');
+                return;
+            }
+            
+            const payload = {
+                child: parseInt(selectedChildId),
+                minutes: parseInt(document.getElementById('penaltyMinutes').value),
+                reason: document.getElementById('penaltyReason').value
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/adhoc-penalties/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    renderDashboard();
+                } else {
+                    const errorData = await response.json();
+                    console.error('Error response:', errorData);
+                    alert('Error creating penalty: ' + JSON.stringify(errorData));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error creating penalty: ' + error.message);
+            }
+        }
+
+        async function deleteAdhocPenalty(penaltyId) {
+            if (!confirm('Are you sure you want to delete this penalty?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/adhoc-penalties/${penaltyId}/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                });
+
+                if (response.ok) {
+                    renderDashboard();
+                } else {
+                    alert('Error deleting penalty');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error deleting penalty: ' + error.message);
             }
         }
 
