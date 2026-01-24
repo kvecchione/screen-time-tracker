@@ -552,9 +552,9 @@
                     return [];
         }
 
-        async function getAdhocRewards() {
+        async function getAdhocRewards(dateStr) {
             try {
-                const response = await fetch(`${API_URL}/adhoc-rewards/?child_id=${selectedChild.id}`, {
+                const response = await fetch(`${API_URL}/adhoc-rewards/?child_id=${selectedChild.id}&date=${dateStr}`, {
                     headers: { 'Content-Type': 'application/json' }
                 });
                 
@@ -568,9 +568,9 @@
             return [];
         }
 
-        async function getAdhocPenalties() {
+        async function getAdhocPenalties(dateStr) {
             try {
-                const response = await fetch(`${API_URL}/adhoc-penalties/?child_id=${selectedChild.id}`, {
+                const response = await fetch(`${API_URL}/adhoc-penalties/?child_id=${selectedChild.id}&date=${dateStr}`, {
                     headers: { 'Content-Type': 'application/json' }
                 });
                 
@@ -640,8 +640,8 @@
             const [dailyResp, weeklyResp, adhocRewards, adhocPenalties, usageData] = await Promise.all([
                 fetch(`${API_URL}/children/${selectedChild.id}/daily_summary/?date=${dateStr}`),
                 fetch(`${API_URL}/children/${selectedChild.id}/weekly_summary/?date=${dateStr}`),
-                getAdhocRewards(),
-                getAdhocPenalties(),
+                getAdhocRewards(dateStr),
+                getAdhocPenalties(dateStr),
                 getScreenTimeUsage(dateStr)
             ]);
 
@@ -797,12 +797,10 @@
                         <div class="goal-card">
                             <div class="goal-header">
                                 <div class="goal-title">${goal.name}</div>
-                                <div style="display: flex; align-items: center; gap: 10px;">
-                                    <button class="reorder-btn" onclick="showEditGoalForm(${goal.id})" title="Edit goal">✏️</button>
-                                    <div class="reorder-controls">
-                                        <button class="reorder-btn" onclick="moveGoal(${goal.id}, 'up')" ${index === 0 ? 'disabled' : ''}>↑</button>
-                                        <button class="reorder-btn" onclick="moveGoal(${goal.id}, 'down')" ${index === visibleGoals.length - 1 ? 'disabled' : ''}>↓</button>
-                                    </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="reorder-btn" style="background: #0066cc; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="showEditGoalForm(${goal.id})" title="Edit goal">✎</button>
+                                    <button class="reorder-btn" style="background: #666; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="moveGoal(${goal.id}, 'up')" ${index === 0 ? 'disabled' : ''}>▲</button>
+                                    <button class="reorder-btn" style="background: #666; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="moveGoal(${goal.id}, 'down')" ${index === visibleGoals.length - 1 ? 'disabled' : ''}>▼</button>
                                 </div>
                             </div>
                             <div style="font-size: 0.9rem; color: #666; margin: 8px 0;">
@@ -850,7 +848,10 @@
                         <div class="goal-card">
                             <div class="goal-header">
                                 <div class="goal-title">${reward.reason}</div>
-                                <button class="reorder-btn" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="deleteAdhocReward(${reward.id})">✕</button>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="reorder-btn" style="background: #0066cc; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="showEditRewardForm(${reward.id}, ${reward.minutes}, '${reward.reason.replace(/'/g, "\\'")}')">✎</button>
+                                    <button class="reorder-btn" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="deleteAdhocReward(${reward.id})">✕</button>
+                                </div>
                             </div>
                             <div style="font-size: 0.9rem; color: #666; margin: 8px 0;">
                                 <strong>${formatMinutesHuman(reward.minutes)}</strong>
@@ -874,7 +875,10 @@
                         <div class="goal-card">
                             <div class="goal-header">
                                 <div class="goal-title">${penalty.reason}</div>
-                                <button class="reorder-btn" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="deleteAdhocPenalty(${penalty.id})">✕</button>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="reorder-btn" style="background: #0066cc; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="showEditPenaltyForm(${penalty.id}, ${penalty.minutes}, '${penalty.reason.replace(/'/g, "\\'")}')">✎</button>
+                                    <button class="reorder-btn" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="deleteAdhocPenalty(${penalty.id})">✕</button>
+                                </div>
                             </div>
                             <div style="font-size: 0.9rem; color: #666; margin: 8px 0;">
                                 <strong>-${formatMinutesHuman(penalty.minutes)}</strong>
@@ -894,8 +898,11 @@
                     <div class="goals-list">
                         <div class="goal-card">
                             <div class="goal-header">
-                                <div class="goal-title">${usageData.notes}</div>
-                                <button class="reorder-btn" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="deleteScreenTimeUsage(${usageData.id})">✕</button>
+                                <div class="goal-title">${usageData.notes || "Screen Time Usage"}</div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="reorder-btn" style="background: #0066cc; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="showEditUsageForm(${usageData.id}, ${usageData.minutes_used}, '${usageData.notes.replace(/'/g, "\\'")}')">✎</button>
+                                    <button class="reorder-btn" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="deleteScreenTimeUsage(${usageData.id})">✕</button>
+                                </div>
                             </div>
                             <div style="font-size: 0.9rem; color: #666; margin: 8px 0;">
                                 <strong>${formatMinutesHuman(usageData.minutes_used)}</strong>
@@ -1491,6 +1498,62 @@
             }
         }
 
+        function showEditRewardForm(rewardId, minutes, reason) {
+            const form = `
+                <div class="card">
+                    <h2 style="margin-bottom: 15px;">Edit Reward</h2>
+                    <form onsubmit="updateAdhocReward(event, ${rewardId})">
+                        <div class="form-group">
+                            <label>Reward Minutes</label>
+                            <input type="number" id="editRewardMinutes" required value="${minutes}" min="1">
+                            <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('editRewardMinutes').value=5">5</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('editRewardMinutes').value=10">10</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('editRewardMinutes').value=15">15</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('editRewardMinutes').value=30">30</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('editRewardMinutes').value=60">60</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Reason</label>
+                            <input type="text" id="editRewardReason" required value="${reason}">
+                        </div>
+                        <button type="submit" class="btn-primary" style="width: 100%;">Update Reward</button>
+                        <button type="button" class="btn-primary" style="width: 100%; background: #999; margin-top: 10px;" onclick="renderDashboard()">Cancel</button>
+                    </form>
+                </div>
+            `;
+            document.getElementById('mainContent').innerHTML = form;
+        }
+
+        async function updateAdhocReward(e, rewardId) {
+            e.preventDefault();
+            const payload = {
+                minutes: parseInt(document.getElementById('editRewardMinutes').value),
+                reason: document.getElementById('editRewardReason').value
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/adhoc-rewards/${rewardId}/`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    renderDashboard();
+                } else {
+                    alert('Error updating reward');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating reward: ' + error.message);
+            }
+        }
+
         async function deleteAdhocReward(rewardId) {
             if (!confirm('Are you sure you want to delete this bonus?')) {
                 return;
@@ -1596,6 +1659,62 @@
             }
         }
 
+        function showEditPenaltyForm(penaltyId, minutes, reason) {
+            const form = `
+                <div class="card">
+                    <h2 style="margin-bottom: 15px;">Edit Penalty</h2>
+                    <form onsubmit="updateAdhocPenalty(event, ${penaltyId})">
+                        <div class="form-group">
+                            <label>Penalty Minutes</label>
+                            <input type="number" id="editPenaltyMinutes" required value="${minutes}" min="1">
+                            <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('editPenaltyMinutes').value=5">5</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('editPenaltyMinutes').value=10">10</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('editPenaltyMinutes').value=15">15</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('editPenaltyMinutes').value=30">30</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('editPenaltyMinutes').value=60">60</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Reason</label>
+                            <input type="text" id="editPenaltyReason" required value="${reason}">
+                        </div>
+                        <button type="submit" class="btn-primary" style="width: 100%;">Update Penalty</button>
+                        <button type="button" class="btn-primary" style="width: 100%; background: #999; margin-top: 10px;" onclick="renderDashboard()">Cancel</button>
+                    </form>
+                </div>
+            `;
+            document.getElementById('mainContent').innerHTML = form;
+        }
+
+        async function updateAdhocPenalty(e, penaltyId) {
+            e.preventDefault();
+            const payload = {
+                minutes: parseInt(document.getElementById('editPenaltyMinutes').value),
+                reason: document.getElementById('editPenaltyReason').value
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/adhoc-penalties/${penaltyId}/`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    renderDashboard();
+                } else {
+                    alert('Error updating penalty');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating penalty: ' + error.message);
+            }
+        }
+
         async function deleteAdhocPenalty(penaltyId) {
             if (!confirm('Are you sure you want to delete this penalty?')) {
                 return;
@@ -1618,6 +1737,62 @@
             } catch (error) {
                 console.error('Error:', error);
                 alert('Error deleting penalty: ' + error.message);
+            }
+        }
+
+        function showEditUsageForm(usageId, minutes, notes) {
+            const form = `
+                <div class="card">
+                    <h2 style="margin-bottom: 15px;">Edit Usage</h2>
+                    <form onsubmit="updateScreenTimeUsageEdit(event, ${usageId})">
+                        <div class="form-group">
+                            <label>Minutes Used</label>
+                            <input type="number" id="editMinutesUsedInput" required value="${minutes}" min="0">
+                            <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('editMinutesUsedInput').value=5">5</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('editMinutesUsedInput').value=10">10</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('editMinutesUsedInput').value=15">15</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('editMinutesUsedInput').value=30">30</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('editMinutesUsedInput').value=60">60</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Notes (Optional)</label>
+                            <input type="text" id="editUsageNotesInput" value="${notes}">
+                        </div>
+                        <button type="submit" class="btn-primary" style="width: 100%;">Update Usage</button>
+                        <button type="button" class="btn-primary" style="width: 100%; background: #999; margin-top: 10px;" onclick="renderDashboard()">Cancel</button>
+                    </form>
+                </div>
+            `;
+            document.getElementById('mainContent').innerHTML = form;
+        }
+
+        async function updateScreenTimeUsageEdit(e, usageId) {
+            e.preventDefault();
+            const payload = {
+                minutes_used: parseInt(document.getElementById('editMinutesUsedInput').value),
+                notes: document.getElementById('editUsageNotesInput').value
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/screen-time-usage/${usageId}/`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    renderDashboard();
+                } else {
+                    alert('Error updating usage');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating usage: ' + error.message);
             }
         }
 
