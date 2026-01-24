@@ -11,8 +11,6 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
-TIME_ZONE = 'America/New_York'
-
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost',
     'http://127.0.0.1',
@@ -103,7 +101,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/New_York'
 USE_I18N = True
 USE_TZ = True
 
