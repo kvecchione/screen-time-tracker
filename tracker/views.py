@@ -12,8 +12,7 @@ from datetime import datetime, timedelta
 from .models import Child, ScreenTimeGoal, DailyTracking, AdhocReward, AdhocPenalty
 from .serializers import (
     ChildDetailSerializer, ChildListSerializer, ScreenTimeGoalSerializer,
-    DailyTrackingSerializer, AdhocRewardSerializer, AdhocPenaltySerializer,
-    DailyTrackingSummarySerializer
+    DailyTrackingSerializer, AdhocRewardSerializer, AdhocPenaltySerializer
 )
 
 
