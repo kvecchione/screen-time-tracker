@@ -452,6 +452,16 @@
         // Day navigation
         let currentDate = new Date();
 
+        function formatMinutesHuman(minutes) {
+            if (minutes === null || minutes === undefined || isNaN(minutes)) return '0m';
+            const sign = minutes < 0 ? '-' : '';
+            const abs = Math.abs(Math.round(minutes));
+            const hours = Math.floor(abs / 60);
+            const mins = abs % 60;
+            if (hours > 0) return `${sign}${hours}h ${mins}m`;
+            return `${sign}${mins}m`;
+        }
+
         function getWeekStart(date = new Date()) {
             const d = new Date(date);
             const day = d.getDay();
@@ -664,11 +674,11 @@
                     <h2>${selectedChild.name}'s Screen Time</h2>
                     <div class="summary-stat">
                         ${dayName} Earned
-                        <strong>${totalDailyEarned} mins</strong>
+                        <strong>${formatMinutesHuman(totalDailyEarned)}</strong>
                     </div>
                     <div class="summary-stat">
                         Week Total (${weekDisplay})
-                        <strong>${weeklyTotal} mins</strong>
+                        <strong>${formatMinutesHuman(weeklyTotal)}</strong>
                     </div>
                 </div>
 
