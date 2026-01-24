@@ -9,10 +9,11 @@ from django.utils import timezone
 from django.db.models import Sum, Q
 from datetime import datetime, timedelta
 
-from .models import Child, ScreenTimeGoal, DailyTracking, AdhocReward, AdhocPenalty
+from .models import Child, ScreenTimeGoal, DailyTracking, AdhocReward, AdhocPenalty, ScreenTimeUsage
 from .serializers import (
     ChildDetailSerializer, ChildListSerializer, ScreenTimeGoalSerializer,
-    DailyTrackingSerializer, AdhocRewardSerializer, AdhocPenaltySerializer
+    DailyTrackingSerializer, AdhocRewardSerializer, AdhocPenaltySerializer,
+    ScreenTimeUsageSerializer
 )
 
 
@@ -269,4 +270,30 @@ class AdhocPenaltyViewSet(viewsets.ModelViewSet):
         return AdhocPenalty.objects.all()
     
     def perform_create(self, serializer):
+        serializer.save()
+
+
+class ScreenTimeUsageViewSet(viewsets.ModelViewSet):
+    """ViewSet for managing screen time usage."""
+    queryset = ScreenTimeUsage.objects.all()
+    serializer_class = ScreenTimeUsageSerializer
+    permission_classes = [AllowAny]
+    
+    def get_queryset(self):
+        child_id = self.request.query_params.get('child_id')
+        date = self.request.query_params.get('date')
+        
+        queryset = ScreenTimeUsage.objects.all()
+        
+        if child_id:
+            queryset = queryset.filter(child_id=child_id)
+        if date:
+            queryset = queryset.filter(date=date)
+            
+        return queryset
+    
+    def perform_create(self, serializer):
+        serializer.save()
+    
+    def perform_update(self, serializer):
         serializer.save()

@@ -79,17 +79,29 @@
             border-radius: 12px;
             box-shadow: 0 15px 35px rgba(37, 99, 235, 0.3);
             border: 2px solid #667eea;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .daily-summary h2 {
+            grid-column: 1 / -1;
+            margin: 0 0 10px 0;
         }
 
         .summary-stat {
-            margin: 10px 0;
-            font-size: 1.1rem;
+            margin: 0;
+            font-size: 1rem;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
         }
 
         .summary-stat strong {
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             display: block;
-            margin-top: 5px;
+            margin-top: 8px;
         }
 
         .goals-list {
@@ -483,6 +495,12 @@
             return day_map[new Date(date).getDay()];
         }
 
+        function parseLocalDate(dateStr) {
+            // Parse "YYYY-MM-DD" as local date instead of UTC
+            const [year, month, day] = dateStr.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        }
+
 
         async function getDailyTrackingsForDate(date) {
             const dateStr = formatDate(new Date(date));
@@ -566,6 +584,51 @@
             return [];
         }
 
+        async function getScreenTimeUsage(dateStr) {
+            try {
+                const response = await fetch(`${API_URL}/screen-time-usage/?child_id=${selectedChild.id}&date=${dateStr}`, {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.results?.[0] || null;
+                }
+            } catch (error) {
+                console.error('Error loading screen time usage:', error);
+            }
+            return null;
+        }
+
+        async function getWeeklyScreenTimeUsage(weekStart, weekEnd) {
+            // Fetch all usage records for the week
+            const dates = [];
+            for (let d = new Date(weekStart); d <= weekEnd; d.setDate(d.getDate() + 1)) {
+                dates.push(formatDate(new Date(d)));
+            }
+            
+            try {
+                const payload = { dates };
+                const response = await fetch(`${API_URL}/screen-time-usage/?child_id=${selectedChild.id}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const usageList = data.results || data || [];
+                    // Filter to only this week's dates
+                    return usageList.filter(usage => {
+                        const usageDate = parseLocalDate(usage.date);
+                        return usageDate >= weekStart && usageDate <= weekEnd;
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading weekly usage:', error);
+            }
+            return [];
+        }
+
         async function renderDashboard() {
             showChildSelector();
             if (!selectedChild) {
@@ -573,11 +636,13 @@
             }
 
             // Fetch day and week summaries from backend to centralize calculations
-            const [dailyResp, weeklyResp, adhocRewards, adhocPenalties] = await Promise.all([
-                fetch(`${API_URL}/children/${selectedChild.id}/daily_summary/?date=${formatDate(currentDate)}`),
-                fetch(`${API_URL}/children/${selectedChild.id}/weekly_summary/?date=${formatDate(currentDate)}`),
+            const dateStr = formatDate(currentDate);
+            const [dailyResp, weeklyResp, adhocRewards, adhocPenalties, usageData] = await Promise.all([
+                fetch(`${API_URL}/children/${selectedChild.id}/daily_summary/?date=${dateStr}`),
+                fetch(`${API_URL}/children/${selectedChild.id}/weekly_summary/?date=${dateStr}`),
                 getAdhocRewards(),
-                getAdhocPenalties()
+                getAdhocPenalties(),
+                getScreenTimeUsage(dateStr)
             ]);
 
             const dailySummary = dailyResp.ok ? await dailyResp.json() : null;
@@ -587,16 +652,20 @@
             const weekStart = weeklySummary?.week_start ? new Date(weeklySummary.week_start) : getWeekStart(currentDate);
             const weekEnd = weeklySummary?.week_end ? new Date(weeklySummary.week_end) : new Date(new Date(weekStart).setDate(new Date(weekStart).getDate() + 6));
 
+            // Fetch weekly usage after we know the week boundaries
+            const weeklyUsageList = await getWeeklyScreenTimeUsage(weekStart, weekEnd);
+            const totalWeeklyUsed = weeklyUsageList.reduce((sum, usage) => sum + (usage.minutes_used || 0), 0);
+
             const weeklyAdhocRewards = adhocRewards
                 .filter(reward => {
-                    const rewardDate = new Date(reward.awarded_date);
+                    const rewardDate = parseLocalDate(reward.awarded_date);
                     return rewardDate >= weekStart && rewardDate <= weekEnd;
                 });
             const totalAdhocRewards = weeklyAdhocRewards.reduce((sum, r) => sum + r.minutes, 0);
 
             const weeklyAdhocPenalties = adhocPenalties
                 .filter(penalty => {
-                    const penaltyDate = new Date(penalty.applied_date);
+                    const penaltyDate = parseLocalDate(penalty.applied_date);
                     return penaltyDate >= weekStart && penaltyDate <= weekEnd;
                 });
             const totalAdhocPenalties = weeklyAdhocPenalties.reduce((sum, p) => sum + p.minutes, 0);
@@ -604,7 +673,7 @@
             // Only show the ad-hoc bonus entries for the currently selected day
             const dailyAdhocRewards = adhocRewards
                 .filter(reward => {
-                    const rewardDate = new Date(reward.awarded_date);
+                    const rewardDate = parseLocalDate(reward.awarded_date);
                     const currentDateOnly = new Date(currentDate);
                     return rewardDate.toDateString() === currentDateOnly.toDateString();
                 });
@@ -612,7 +681,7 @@
             // Only show the ad-hoc penalty entries for the currently selected day
             const dailyAdhocPenalties = adhocPenalties
                 .filter(penalty => {
-                    const penaltyDate = new Date(penalty.applied_date);
+                    const penaltyDate = parseLocalDate(penalty.applied_date);
                     const currentDateOnly = new Date(currentDate);
                     return penaltyDate.toDateString() === currentDateOnly.toDateString();
                 });
@@ -637,7 +706,7 @@
             // Add rewards awarded today to the daily total
             const todayRewards = adhocRewards
                 .filter(reward => {
-                    const rewardDate = new Date(reward.awarded_date);
+                    const rewardDate = parseLocalDate(reward.awarded_date);
                     const currentDateOnly = new Date(currentDate);
                     return rewardDate.toDateString() === currentDateOnly.toDateString();
                 })
@@ -646,7 +715,7 @@
             // Subtract penalties applied today from the daily total
             const todayPenalties = adhocPenalties
                 .filter(penalty => {
-                    const penaltyDate = new Date(penalty.applied_date);
+                    const penaltyDate = parseLocalDate(penalty.applied_date);
                     const currentDateOnly = new Date(currentDate);
                     return penaltyDate.toDateString() === currentDateOnly.toDateString();
                 })
@@ -673,12 +742,16 @@
                 <div class="daily-summary">
                     <h2>${selectedChild.name}'s Screen Time</h2>
                     <div class="summary-stat">
-                        ${dayName} Earned
-                        <strong>${formatMinutesHuman(totalDailyEarned)}</strong>
+                        Earned 
+                        <strong>${formatMinutesHuman(weeklyTotal)}</strong>
                     </div>
                     <div class="summary-stat">
-                        Week Total (${weekDisplay})
-                        <strong>${formatMinutesHuman(weeklyTotal)}</strong>
+                        Used
+                        <strong>${formatMinutesHuman(totalWeeklyUsed)}</strong>
+                    </div>
+                    <div class="summary-stat">
+                        Remaining
+                        <strong>${formatMinutesHuman(Math.max(0, weeklyTotal - totalWeeklyUsed))}</strong>
                     </div>
                 </div>
 
@@ -688,7 +761,7 @@
                         <h2 style="margin: 0; flex: 1; text-align: center; font-size: 1.1rem;">${dayName} (${dateDisplay})</h2>
                         <button class="btn-primary" style="flex: 0 1 auto; padding: 8px 12px; font-size: 0.9rem;" onclick="nextDay()">Next →</button>
                     </div>
-                    <h2 style="margin-bottom: 15px;">Today's Goals</h2>
+                    <h2 style="margin-bottom: 15px;">Goals</h2>
                     <div class="goals-list">
             `;
 
@@ -733,7 +806,7 @@
                                 </div>
                             </div>
                             <div style="font-size: 0.9rem; color: #666; margin: 8px 0;">
-                                ${goal.goal_type === 'tracked' ? `Reward: ${goal.reward_per_hour} mins/hr` : `Reward: ${goal.reward_minutes} mins${goal.bonus_minutes > 0 ? ` (+${goal.bonus_minutes} unprompted)` : ''}`} | Days: ${daysDisplay}
+                                ${goal.goal_type === 'tracked' ? `Earns: ${goal.reward_per_hour} mins/hr` : `Earns: ${formatMinutesHuman(goal.reward_minutes)}${goal.bonus_minutes > 0 ? ` (+${formatMinutesHuman(goal.bonus_minutes)})` : ''}`} | Days: ${daysDisplay}
                             </div>
                             ${goal.goal_type === 'tracked' ? `
                                 <div style="margin: 12px 0;">
@@ -769,7 +842,7 @@
             // Display ad-hoc rewards if any exist
             if (dailyAdhocRewards.length > 0) {
                 html += `
-                    <h2 style="margin-bottom: 15px; margin-top: 20px;">⭐ Rewards</h2>
+                    <h2 style="margin-bottom: 15px; margin-top: 20px;">Rewards</h2>
                     <div class="goals-list">
                 `;
                 dailyAdhocRewards.forEach(reward => {
@@ -780,7 +853,7 @@
                                 <button class="reorder-btn" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="deleteAdhocReward(${reward.id})">✕</button>
                             </div>
                             <div style="font-size: 0.9rem; color: #666; margin: 8px 0;">
-                                <strong>${reward.minutes} mins</strong>
+                                <strong>${formatMinutesHuman(reward.minutes)}</strong>
                             </div>
                         </div>
                     `;
@@ -793,7 +866,7 @@
             // Display ad-hoc penalties if any exist
             if (dailyAdhocPenalties.length > 0) {
                 html += `
-                    <h2 style="margin-bottom: 15px; margin-top: 20px;">⚠️ Penalties</h2>
+                    <h2 style="margin-bottom: 15px; margin-top: 20px;">Penalties</h2>
                     <div class="goals-list">
                 `;
                 dailyAdhocPenalties.forEach(penalty => {
@@ -804,7 +877,7 @@
                                 <button class="reorder-btn" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="deleteAdhocPenalty(${penalty.id})">✕</button>
                             </div>
                             <div style="font-size: 0.9rem; color: #666; margin: 8px 0;">
-                                <strong>-${penalty.minutes} mins</strong>
+                                <strong>-${formatMinutesHuman(penalty.minutes)}</strong>
                             </div>
                         </div>
                     `;
@@ -814,12 +887,33 @@
                 `;
             }
 
+            // Display screen time usage for this day
+            if (usageData && usageData.minutes_used > 0) {
+                html += `
+                    <h2 style="margin-bottom: 15px; margin-top: 20px;">Usage</h2>
+                    <div class="goals-list">
+                        <div class="goal-card">
+                            <div class="goal-header">
+                                <div class="goal-title">${usageData.notes}</div>
+                                <button class="reorder-btn" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="deleteScreenTimeUsage(${usageData.id})">✕</button>
+                            </div>
+                            <div style="font-size: 0.9rem; color: #666; margin: 8px 0;">
+                                <strong>${formatMinutesHuman(usageData.minutes_used)}</strong>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
             html += `
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-                        <button class="btn-primary" style="margin-top: 15px;" onclick="showAddGoalForm()">+ Add Goal</button>
+                        <button class="btn-primary" style="margin-top: 15px;" onclick="showAddGoalForm()">🎯 Add Goal</button>
                         <button class="btn-primary" style="margin-top: 15px;" onclick="showAdhocRewardForm()">⭐ Reward</button>
                         <button class="btn-primary" style="margin-top: 15px;" onclick="showAdhocPenaltyForm()">⚠️ Penalty</button>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 10px;">
+                        <button class="btn-primary" style="margin-top: 5px;" onclick="showScreenTimeUsageForm()">📱 Log Usage</button>
                     </div>
                 </div>
             `;
@@ -1320,7 +1414,7 @@
             
             const form = `
                 <div class="card">
-                    <h2 style="margin-bottom: 15px;">Give Bonus ⭐</h2>
+                    <h2 style="margin-bottom: 15px;">Give Reward</h2>
                     <form onsubmit="createAdhocReward(event)">
                         <div class="form-group">
                             <label>Select Child</label>
@@ -1336,6 +1430,12 @@
                         <div class="form-group">
                             <label>Reward Minutes</label>
                             <input type="number" id="rewardMinutes" required placeholder="30" min="1">
+                            <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('rewardMinutes').value=5">5</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('rewardMinutes').value=10">10</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('rewardMinutes').value=15">15</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('rewardMinutes').value=30">30</button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Reason</label>
@@ -1364,7 +1464,8 @@
             const payload = {
                 child: parseInt(selectedChildId),
                 minutes: parseInt(document.getElementById('rewardMinutes').value),
-                reason: document.getElementById('rewardReason').value
+                reason: document.getElementById('rewardReason').value,
+                awarded_date: formatDate(currentDate)
             };
 
             try {
@@ -1420,7 +1521,7 @@
             
             const form = `
                 <div class="card">
-                    <h2 style="margin-bottom: 15px;">Apply Penalty ⚠️</h2>
+                    <h2 style="margin-bottom: 15px;">Give Penalty</h2>
                     <form onsubmit="createAdhocPenalty(event)">
                         <div class="form-group">
                             <label>Select Child</label>
@@ -1436,6 +1537,12 @@
                         <div class="form-group">
                             <label>Penalty Minutes</label>
                             <input type="number" id="penaltyMinutes" required placeholder="15" min="1">
+                            <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('penaltyMinutes').value=5">5</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('penaltyMinutes').value=10">10</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('penaltyMinutes').value=15">15</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('penaltyMinutes').value=30">30</button>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Reason</label>
@@ -1462,7 +1569,8 @@
             const payload = {
                 child: parseInt(selectedChildId),
                 minutes: parseInt(document.getElementById('penaltyMinutes').value),
-                reason: document.getElementById('penaltyReason').value
+                reason: document.getElementById('penaltyReason').value,
+                applied_date: formatDate(currentDate)
             };
 
             try {
@@ -1510,6 +1618,153 @@
             } catch (error) {
                 console.error('Error:', error);
                 alert('Error deleting penalty: ' + error.message);
+            }
+        }
+
+        async function deleteScreenTimeUsage(usageId) {
+            if (!confirm('Are you sure you want to delete this usage entry?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/screen-time-usage/${usageId}/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                });
+
+                if (response.ok) {
+                    renderDashboard();
+                } else {
+                    alert('Error deleting usage');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error deleting usage: ' + error.message);
+            }
+        }
+
+        async function updateScreenTimeUsage(minutesUsed) {
+            const dateStr = formatDate(currentDate);
+            
+            try {
+                // Try to find existing usage record
+                const existingResponse = await fetch(`${API_URL}/screen-time-usage/?child_id=${selectedChild.id}&date=${dateStr}`, {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const existingData = existingResponse.ok ? await existingResponse.json() : null;
+                const usageId = existingData?.results?.[0]?.id;
+                
+                const method = usageId ? 'PATCH' : 'POST';
+                const url = usageId 
+                    ? `${API_URL}/screen-time-usage/${usageId}/`
+                    : `${API_URL}/screen-time-usage/`;
+
+                const payload = {
+                    child: selectedChild.id,
+                    date: dateStr,
+                    minutes_used: minutesUsed
+                };
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    renderDashboard();
+                } else {
+                    alert('Error updating screen time usage');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error updating screen time usage: ' + error.message);
+            }
+        }
+
+        function showScreenTimeUsageForm() {
+            document.getElementById('childSelectorCard').style.display = 'none';
+            
+            const form = `
+                <div class="card">
+                    <h2 style="margin-bottom: 15px;">Log Screen Time Usage</h2>
+                    <form onsubmit="logScreenTimeUsage(event)">
+                        <div class="form-group">
+                            <label>Minutes Used</label>
+                            <input type="number" id="minutesUsedInput" required placeholder="30" min="0" value="0">
+                            <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('minutesUsedInput').value=30">30</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('minutesUsedInput').value=60">60</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('minutesUsedInput').value=90">90</button>
+                                <button type="button" class="btn-primary" style="padding: 12px 20px; font-size: 1.1rem;" onclick="document.getElementById('minutesUsedInput').value=120">120</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Notes (Optional)</label>
+                            <input type="text" id="usageNotesInput" placeholder="e.g., YouTube, Gaming">
+                        </div>
+                        <button type="submit" class="btn-primary" style="width: 100%;">Log Usage</button>
+                        <button type="button" class="btn-primary" style="width: 100%; background: #999; margin-top: 10px;" onclick="renderDashboard()">Cancel</button>
+                    </form>
+                </div>
+            `;
+            document.getElementById('mainContent').innerHTML = form;
+        }
+
+        async function logScreenTimeUsage(e) {
+            e.preventDefault();
+            
+            const minutesUsed = parseInt(document.getElementById('minutesUsedInput').value) || 0;
+            const notes = document.getElementById('usageNotesInput').value || '';
+            const dateStr = formatDate(currentDate);
+            
+            try {
+                // Try to find existing usage record
+                const existingResponse = await fetch(`${API_URL}/screen-time-usage/?child_id=${selectedChild.id}&date=${dateStr}`, {
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const existingData = existingResponse.ok ? await existingResponse.json() : null;
+                const usageId = existingData?.results?.[0]?.id;
+                
+                const method = usageId ? 'PATCH' : 'POST';
+                const url = usageId 
+                    ? `${API_URL}/screen-time-usage/${usageId}/`
+                    : `${API_URL}/screen-time-usage/`;
+
+                const payload = {
+                    child: selectedChild.id,
+                    date: dateStr,
+                    minutes_used: minutesUsed,
+                    notes: notes
+                };
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    renderDashboard();
+                } else {
+                    const errorData = await response.json();
+                    console.error('Error response:', errorData);
+                    alert('Error logging usage: ' + JSON.stringify(errorData));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error logging usage: ' + error.message);
             }
         }
 

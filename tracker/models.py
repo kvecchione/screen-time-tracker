@@ -137,7 +137,7 @@ class AdhocReward(models.Model):
     child = models.ForeignKey(Child, on_delete=models.CASCADE, related_name='adhoc_rewards')
     minutes = models.PositiveIntegerField(help_text="Minutes rewarded")
     reason = models.CharField(max_length=200, help_text="Reason for the reward")
-    awarded_date = models.DateField(auto_now_add=True, help_text="Date the reward was given")
+    awarded_date = models.DateField(help_text="Date the reward was given")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -156,7 +156,7 @@ class AdhocPenalty(models.Model):
     child = models.ForeignKey(Child, on_delete=models.CASCADE, related_name='adhoc_penalties')
     minutes = models.PositiveIntegerField(help_text="Minutes penalized")
     reason = models.CharField(max_length=200, help_text="Reason for the penalty")
-    applied_date = models.DateField(auto_now_add=True, help_text="Date the penalty was applied")
+    applied_date = models.DateField(help_text="Date the penalty was applied")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -169,4 +169,24 @@ class AdhocPenalty(models.Model):
     
     def __str__(self):
         return f"{self.child.name} - {self.minutes} mins penalty ({self.reason})"
+
+
+class ScreenTimeUsage(models.Model):
+    """Model for tracking actual screen time consumed by a child."""
+    child = models.ForeignKey(Child, on_delete=models.CASCADE, related_name='screen_time_usage')
+    date = models.DateField(help_text="Date of usage")
+    minutes_used = models.PositiveIntegerField(default=0, help_text="Minutes of screen time actually used")
+    notes = models.TextField(blank=True, help_text="Notes about usage")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-date']
+        unique_together = ['child', 'date']
+        indexes = [
+            models.Index(fields=['child', 'date']),
+        ]
+    
+    def __str__(self):
+        return f"{self.child.name} - {self.minutes_used} mins used on {self.date}"
 
