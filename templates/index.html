@@ -603,7 +603,7 @@
         async function getWeeklyScreenTimeUsage(weekStart, weekEnd) {
             // Fetch all usage records for the week
             const dates = [];
-            for (let d = new Date(weekStart); d <= weekEnd; d.setDate(d.getDate() + 1)) {
+            for (let d = new Date(weekStart); d < weekEnd; d.setDate(d.getDate() + 1)) {
                 dates.push(formatDate(new Date(d)));
             }
             
@@ -649,8 +649,8 @@
             const weeklySummary = weeklyResp.ok ? await weeklyResp.json() : null;
 
             const trackings = dailySummary?.goals || [];
-            let weekStart = weeklySummary?.week_start ? new Date(weeklySummary.week_start) : getWeekStart(currentDate);
-            let weekEnd = weeklySummary?.week_end ? new Date(weeklySummary.week_end) : new Date(new Date(weekStart).setDate(new Date(weekStart).getDate() + 6));
+            let weekStart = weeklySummary?.week_start ? parseLocalDate(weeklySummary.week_start) : getWeekStart(currentDate);
+            let weekEnd = weeklySummary?.week_end ? parseLocalDate(weeklySummary.week_end) : new Date(new Date(weekStart).setDate(new Date(weekStart).getDate() + 6));
             
             // Reset time components to midnight for proper date comparison
             weekStart = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate());
@@ -665,14 +665,14 @@
             const weeklyAdhocRewards = adhocRewards
                 .filter(reward => {
                     const rewardDate = parseLocalDate(reward.awarded_date);
-                    return rewardDate >= weekStart && rewardDate <= weekEnd;
+                    return rewardDate >= weekStart && rewardDate < weekEnd;
                 });
             const totalAdhocRewards = weeklyAdhocRewards.reduce((sum, r) => sum + r.minutes, 0);
 
             const weeklyAdhocPenalties = adhocPenalties
                 .filter(penalty => {
                     const penaltyDate = parseLocalDate(penalty.applied_date);
-                    return penaltyDate >= weekStart && penaltyDate <= weekEnd;
+                    return penaltyDate >= weekStart && penaltyDate < weekEnd;
                 });
             const totalAdhocPenalties = weeklyAdhocPenalties.reduce((sum, p) => sum + p.minutes, 0);
 
