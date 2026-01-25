@@ -1907,18 +1907,9 @@
             const dateStr = formatDate(currentDate);
             
             try {
-                // Try to find existing usage record
-                const existingResponse = await fetch(`${API_URL}/screen-time-usage/?child_id=${selectedChild.id}&date=${dateStr}`, {
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                
-                const existingData = existingResponse.ok ? await existingResponse.json() : null;
-                const usageId = existingData?.results?.[0]?.id;
-                
-                const method = usageId ? 'PATCH' : 'POST';
-                const url = usageId 
-                    ? `${API_URL}/screen-time-usage/${usageId}/`
-                    : `${API_URL}/screen-time-usage/`;
+                // Always create a new usage entry (do not overwrite existing)
+                const method = 'POST';
+                const url = `${API_URL}/screen-time-usage/`;
 
                 const payload = {
                     child: selectedChild.id,
