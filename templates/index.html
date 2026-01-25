@@ -620,7 +620,7 @@
                     // Filter to only this week's dates
                     return usageList.filter(usage => {
                         const usageDate = parseLocalDate(usage.date);
-                        return usageDate >= weekStart && usageDate <= weekEnd;
+                        return usageDate >= weekStart && usageDate < weekEnd;
                     });
                 }
             } catch (error) {
@@ -655,6 +655,8 @@
             // Reset time components to midnight for proper date comparison
             weekStart = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate());
             weekEnd = new Date(weekEnd.getFullYear(), weekEnd.getMonth(), weekEnd.getDate());
+            // Set weekEnd to the start of the next day (exclusive) so Sunday is fully included
+            weekEnd.setDate(weekEnd.getDate() + 1);
 
             // Fetch weekly usage after we know the week boundaries
             const weeklyUsageList = await getWeeklyScreenTimeUsage(weekStart, weekEnd);
