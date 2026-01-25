@@ -948,13 +948,8 @@
         }
 
         function nextDay() {
-            const today = new Date();
             currentDate = new Date(currentDate);
             currentDate.setDate(currentDate.getDate() + 1);
-            // Don't go beyond today
-            if (currentDate > today) {
-                currentDate = new Date(today);
-            }
             renderDashboard();
         }
 
@@ -1152,6 +1147,13 @@
                                 <option value="tracked">Tracked (Hours)</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="rolloverSundayCheckbox" style="width: 16px; height: 16px;">
+                                Apply Sunday's earned minutes to next week
+                            </label>
+                            <small style="color: #666;">If checked, Sunday completions roll into the following week's totals.</small>
+                        </div>
                         <div class="form-group" id="rewardMinutesGroup">
                             <label>Reward Minutes</label>
                             <input type="number" id="rewardMinutes" placeholder="30" min="1">
@@ -1228,6 +1230,7 @@
                 bonus_minutes: bonusMinutes,
                 target_minutes: 0,
                 applies_to_days: selectedDays,
+                rollover_sunday_to_next_week: document.getElementById('rolloverSundayCheckbox').checked,
                 is_active: true
             };
 
@@ -1295,6 +1298,13 @@
                                 <option value="binary" ${goal.goal_type === 'binary' ? 'selected' : ''}>Binary (Earned/Not Earned)</option>
                                 <option value="tracked" ${goal.goal_type === 'tracked' ? 'selected' : ''}>Tracked (Hours)</option>
                             </select>
+                        </div>
+                        <div class="form-group">
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="rolloverSundayCheckbox" style="width: 16px; height: 16px;" ${goal.rollover_sunday_to_next_week ? 'checked' : ''}>
+                                Apply Sunday's earned minutes to next week
+                            </label>
+                            <small style="color: #666;">If checked, Sunday completions roll into the following week's totals.</small>
                         </div>
                         <div class="form-group" id="rewardMinutesGroup" style="display: ${goal.goal_type === 'binary' ? 'block' : 'none'};">
                             <label>Reward Minutes</label>
@@ -1378,6 +1388,7 @@
                 bonus_minutes: bonusMinutes,
                 target_minutes: 0,
                 applies_to_days: selectedDays,
+                rollover_sunday_to_next_week: document.getElementById('rolloverSundayCheckbox').checked,
                 is_active: true
             };
 

@@ -18,7 +18,8 @@ class ScreenTimeGoalSerializer(serializers.ModelSerializer):
         model = ScreenTimeGoal
         fields = [
             'id', 'name', 'goal_type', 'reward_minutes', 'reward_per_hour', 'bonus_minutes',
-            'target_minutes', 'applies_to_days', 'is_active', 'order', 'children', 'child_ids'
+            'target_minutes', 'applies_to_days', 'rollover_sunday_to_next_week',
+            'is_active', 'order', 'children', 'child_ids'
         ]
         read_only_fields = ['id']
     

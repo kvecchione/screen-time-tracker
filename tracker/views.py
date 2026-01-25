@@ -121,7 +121,26 @@ class ChildViewSet(viewsets.ModelViewSet):
         for t in trackings:
             day_code = day_map[t.date.weekday()]
             applies = day_code in [d.strip() for d in (t.goal.applies_to_days or '').split(',')]
-            if applies and t.status == 'earned':
+            if not applies or t.status != 'earned':
+                continue
+            # If goal is marked to roll Sunday into next week, skip counting it this week
+            if day_code == 'sun' and getattr(t.goal, 'rollover_sunday_to_next_week', False):
+                continue
+            total_earned += t.minutes_earned or 0
+
+        # Include roll-over earnings from the previous Sunday's completed goals (for flagged goals)
+        prev_sunday = monday - timedelta(days=1)
+        rollover_trackings = DailyTracking.objects.filter(
+            child=child,
+            date=prev_sunday,
+            goal__rollover_sunday_to_next_week=True,
+            status='earned'
+        ).select_related('goal')
+
+        for t in rollover_trackings:
+            # Only count if the goal actually applies to Sundays
+            applies = 'sun' in [d.strip() for d in (t.goal.applies_to_days or '').split(',')]
+            if applies:
                 total_earned += t.minutes_earned or 0
 
         summary = {

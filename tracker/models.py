@@ -69,6 +69,10 @@ class ScreenTimeGoal(models.Model):
         default=5,
         help_text="Additional bonus minutes for completing without being asked"
     )
+    rollover_sunday_to_next_week = models.BooleanField(
+        default=False,
+        help_text="If earned on Sunday, apply the reward to the following week's totals"
+    )
     target_minutes = models.PositiveIntegerField(
         default=0,
         help_text="Target minutes for tracked goals (e.g., 120 for 2 hours of reading)"
