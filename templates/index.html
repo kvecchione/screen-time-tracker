@@ -649,8 +649,12 @@
             const weeklySummary = weeklyResp.ok ? await weeklyResp.json() : null;
 
             const trackings = dailySummary?.goals || [];
-            const weekStart = weeklySummary?.week_start ? new Date(weeklySummary.week_start) : getWeekStart(currentDate);
-            const weekEnd = weeklySummary?.week_end ? new Date(weeklySummary.week_end) : new Date(new Date(weekStart).setDate(new Date(weekStart).getDate() + 6));
+            let weekStart = weeklySummary?.week_start ? new Date(weeklySummary.week_start) : getWeekStart(currentDate);
+            let weekEnd = weeklySummary?.week_end ? new Date(weeklySummary.week_end) : new Date(new Date(weekStart).setDate(new Date(weekStart).getDate() + 6));
+            
+            // Reset time components to midnight for proper date comparison
+            weekStart = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate());
+            weekEnd = new Date(weekEnd.getFullYear(), weekEnd.getMonth(), weekEnd.getDate());
 
             // Fetch weekly usage after we know the week boundaries
             const weeklyUsageList = await getWeeklyScreenTimeUsage(weekStart, weekEnd);
