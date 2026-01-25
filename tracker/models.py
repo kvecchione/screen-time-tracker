@@ -182,7 +182,6 @@ class ScreenTimeUsage(models.Model):
     
     class Meta:
         ordering = ['-date']
-        unique_together = ['child', 'date']
         indexes = [
             models.Index(fields=['child', 'date']),
         ]

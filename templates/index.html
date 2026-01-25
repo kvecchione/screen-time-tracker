@@ -592,12 +592,12 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    return data.results?.[0] || null;
+                    return data.results || data || [];
                 }
             } catch (error) {
                 console.error('Error loading screen time usage:', error);
             }
-            return null;
+            return [];
         }
 
         async function getWeeklyScreenTimeUsage(weekStart, weekEnd) {
@@ -637,7 +637,7 @@
 
             // Fetch day and week summaries from backend to centralize calculations
             const dateStr = formatDate(currentDate);
-            const [dailyResp, weeklyResp, adhocRewards, adhocPenalties, usageData] = await Promise.all([
+            const [dailyResp, weeklyResp, adhocRewards, adhocPenalties, usageList] = await Promise.all([
                 fetch(`${API_URL}/children/${selectedChild.id}/daily_summary/?date=${dateStr}`),
                 fetch(`${API_URL}/children/${selectedChild.id}/weekly_summary/?date=${dateStr}`),
                 getAdhocRewards(dateStr),
@@ -898,22 +898,29 @@
             }
 
             // Display screen time usage for this day
-            if (usageData && usageData.minutes_used > 0) {
+            if (usageList.length > 0) {
                 html += `
                     <h2 style="margin-bottom: 15px; margin-top: 20px;">Usage</h2>
                     <div class="goals-list">
+            `;
+                usageList.forEach(usage => {
+                    const safeNotes = (usage.notes || "Screen Time Usage").replace(/'/g, "\\'");
+                    html += `
                         <div class="goal-card">
                             <div class="goal-header">
-                                <div class="goal-title">${usageData.notes || "Screen Time Usage"}</div>
+                                <div class="goal-title">${usage.notes || "Screen Time Usage"}</div>
                                 <div style="display: flex; gap: 8px;">
-                                    <button class="reorder-btn" style="background: #0066cc; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="showEditUsageForm(${usageData.id}, ${usageData.minutes_used}, '${usageData.notes.replace(/'/g, "\\'")}')">✎</button>
-                                    <button class="reorder-btn" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="deleteScreenTimeUsage(${usageData.id})">✕</button>
+                                    <button class="reorder-btn" style="background: #0066cc; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="showEditUsageForm(${usage.id}, ${usage.minutes_used}, '${safeNotes}')">✎</button>
+                                    <button class="reorder-btn" style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 1rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;" onclick="deleteScreenTimeUsage(${usage.id})">✕</button>
                                 </div>
                             </div>
                             <div style="font-size: 0.9rem; color: #666; margin: 8px 0;">
-                                <strong>${formatMinutesHuman(usageData.minutes_used)}</strong>
+                                <strong>${formatMinutesHuman(usage.minutes_used)}</strong>
                             </div>
                         </div>
+                    `;
+                });
+                html += `
                     </div>
                 `;
             }
